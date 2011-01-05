@@ -1,0 +1,7 @@
+Mongrel2 C handler example code.
+
+I am trying to bridge a C-only library (a real-time messaging middleware) into the jsocket/websocket world and this could be useful to others.
+
+Feel free to send me a message through github.
+
+Xavier Lange
