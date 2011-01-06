@@ -108,33 +108,6 @@ int main(int argc, char **args){
   memcpy(body, cursor, body_len);
   body[body_len] = '\0';
   fprintf(stdout,"Body: %s\n",body);
-  
-
-
-/*
-  int64_t more;
-  size_t more_size = sizeof(more);
-  zmq_retval = zmq_getsockopt(pull_socket, ZMQ_RCVMORE, &more, &more_size);
-  if(zmq_retval != 0){
-      switch(errno){
-          case EINVAL : {
-              fprintf(stderr, "option_name is unknown, or option_len or option_value is invalid, or the size of the buffer specified by option_len is insufficient");
-              break;
-          }
-          case ETERM : {
-              fprintf(stderr, "zmq context was terminated");
-              break;
-          }
-          case EFAULT : {
-              fprintf(stderr, "provided socket is not valid");
-          }
-      }
-      exit(EXIT_FAILURE);
-  }
-  if(more != 0){
-      fprintf(stdout, "More data awaits!");
-  }
-*/
 
 
   /**
