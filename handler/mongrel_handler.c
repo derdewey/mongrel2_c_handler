@@ -59,21 +59,26 @@ int main(int argc, char **args){
       }
       exit(EXIT_FAILURE);
   }
-
-  uint8_t uuid[16];
   
   zmq_msg_t msg;
   zmq_msg_init(&msg);
   zmq_recv(pull_socket, &msg, 0);
   size_t msg_size = zmq_msg_size(&msg);
-  fprintf(stdout, "Got a message of size %d", msg_size);
-  memcpy(uuid,zmq_msg_data(&msg),sizeof(uuid));
-  fprintf(stdout, "UUID: %x:%x:%x:%x:%x:%x:%x:%x--%x:%x:%x:%x:%x:%x:%x:%x", uuid[0],uuid[1],uuid[2],uuid[3],uuid[4],uuid[5],uuid[6],uuid[7],uuid[8],uuid[9],uuid[10],uuid[11],uuid[12],uuid[13],uuid[14],uuid[15]);
+  fprintf(stdout, "Got a message of size %d\n", msg_size);
+  // fprintf(stdout,"%s\n",(char*)zmq_msg_data(&msg));
+  char uuid[36+1], path[256];
+  // How big can the msg id get? 32-bit or 64-bit?
+  uint32_t msg_seq_id, payload_length;
 
-  char super_buffer[1024];
-  uint8_t *msg_remaining = zmq_msg_data(&msg); // + sizeof(void*) * sizeof(uuid);
-  snprintf(super_buffer, sizeof(super_buffer), "Remaining Message: %s",msg_remaining);
-  fprintf(stdout,"%s",super_buffer);
+  char* data = (char*)zmq_msg_data(&msg);
+  sscanf(data,"%s %d %s %d",uuid, &msg_seq_id, path, &payload_length);
+  assert(uuid[36] == '\0');
+  char *payload = calloc(payload_length+1,sizeof(char*));
+  fprintf(stdout,"%s\n",uuid);
+  fprintf(stdout,"%d\n",msg_seq_id);
+  fprintf(stdout,"%s\n",path);
+  fprintf(stdout,"%d\n",payload_length);
+  fprintf(stdout,"%s\n",payload);
 
 /*
   int64_t more;

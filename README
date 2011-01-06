@@ -1,7 +1,21 @@
 Mongrel2 C handler example code.
 
-I am trying to bridge a C-only library (a real-time messaging middleware) into the jsocket/websocket world and this could be useful to others.
+I am trying to bridge a C-only library into the jsocket/websocket world and I thought this could be useful to others.
 
-Feel free to send me a message through github.
+== Prequisites ==
 
+mongrel2 installed and configured to your liking (see my deployment example to get going, config.sh and start.sh help out)
+http://www.mongrel2.org/
+
+peg/leg
+http://piumarta.com/software/peg/
+
+== Parsing Incoming Requests ==
+Mongrel2 uses lemon but I don't know jack about how to use those. But I have used treetop for ruby, so let's peg it! peg/leg is a C-code generator that uses a similar rule format to treetop. Let's see if I can use that.
+
+== Contact ==
+
+Feel free to send me a message through github. Patches are welcome!
+
+My name:
 Xavier Lange
