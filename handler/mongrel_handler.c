@@ -64,21 +64,52 @@ int main(int argc, char **args){
   zmq_msg_init(&msg);
   zmq_recv(pull_socket, &msg, 0);
   size_t msg_size = zmq_msg_size(&msg);
-  fprintf(stdout, "Got a message of size %d\n", msg_size);
-  // fprintf(stdout,"%s\n",(char*)zmq_msg_data(&msg));
-  char uuid[36+1], path[256];
-  // How big can the msg id get? 32-bit or 64-bit?
-  uint32_t msg_seq_id, payload_length;
-
   char* data = (char*)zmq_msg_data(&msg);
-  sscanf(data,"%s %d %s %d",uuid, &msg_seq_id, path, &payload_length);
+  fprintf(stdout, "Got a message of size %d\n", msg_size);
+  fprintf(stdout, "Received: %s\n",data);
+  
+  char uuid[36+1], path[256];
+  uint32_t msg_seq_id, header_len, body_len;   // How big can the msg id get? 32-bit or 64-bit?
+  
+  sscanf(data,"%s %d %s %d",uuid, &msg_seq_id, path, &header_len);
   assert(uuid[36] == '\0');
-  char *payload = calloc(payload_length+1,sizeof(char*));
+  char *headers = NULL, *body = NULL;
+  headers = calloc(header_len+1,sizeof(char*));
+
   fprintf(stdout,"%s\n",uuid);
   fprintf(stdout,"%d\n",msg_seq_id);
   fprintf(stdout,"%s\n",path);
-  fprintf(stdout,"%d\n",payload_length);
-  fprintf(stdout,"%s\n",payload);
+  fprintf(stdout,"%d\n",header_len);
+
+  /**
+   * This code will barf if the path has a space in it!
+   * Terrible code... whee!
+   */
+  char* cursor = data;
+  cursor = strchr(cursor, ' '); // over UUID
+  ++cursor; // consume the space
+  cursor = strchr(cursor, ' '); // over SeqID
+  ++cursor; // consume the space
+  cursor = strchr(cursor, ' '); // over Path
+  ++cursor; // consume the space
+  cursor = strchr(cursor, ':'); // over header_len
+  ++cursor; // consume the semi-colon
+  memcpy(headers, cursor, header_len);
+  headers[header_len] = '\0';
+  fprintf(stdout,"%s\n",headers);
+  for(int i=0; i<header_len; i++){   // cursor = cursor + header_len; instead of loop?
+      ++cursor;
+  }
+  cursor = strchr(cursor, ',');
+  ++cursor; // consume ,
+  sscanf(cursor, "%d", &body_len);
+  fprintf(stdout,"Body Length: %d\n",body_len);
+  body = calloc(body_len+1,sizeof(char*));
+  memcpy(body, cursor, body_len);
+  body[body_len] = '\0';
+  fprintf(stdout,"Body: %s\n",body);
+  
+
 
 /*
   int64_t more;
