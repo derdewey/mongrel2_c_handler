@@ -1,6 +1,6 @@
 Mongrel2 C handler example code.
 
-I am trying to bridge a C-only library into the jsocket/websocket world and I thought this could be useful to others.
+I am trying to bridge a C-only library into the jsocket/websocket world and I thought this could be useful to others. Hacked up parser, check. Don't really understand HTTP, check. I'm just the guy for the job!
 
 == Prequisites ==
 
@@ -43,6 +43,8 @@ OPAQUE_RESPONSE: Whatever you want, mongrel won't touch it
 UUID CONN_NETSTRING, OPAQUE_RESPONSE
 
 Reasoning for a CONN_NETSTRING: Allow a single handler message to go to multiple clients. Web multicast made easy? Dunno, could be handy with websocket-y stuff.
+
+Caveat: Still trying to figure out how to tell mongrel to disconnect the client.
 
 == Large messages ==
 I think you'll have to use ZMQ's getsockopt to see if there are more messages related to what you're processing. Large requests will be split up into multiple messages. No support for that just yet.

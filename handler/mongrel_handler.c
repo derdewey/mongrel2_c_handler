@@ -15,6 +15,8 @@
 #include<assert.h>
 
 char *SENDER_ID = "82209006-86FF-4982-B5EA-D1E29E55D481";
+char *RESPONSE_FORMAT = "%s %d:%d, %s";
+char *CLOSE_FORMAT = "%s %d:%d, ";
 
 void zmq_dummy_free(void *data, void *hint){
     free(data);
@@ -146,13 +148,13 @@ int main(int argc, char **args){
 
   zmq_msg_t response_msg;
   zmq_msg_init(&response_msg);
-  char *hello = "HTTP/1.1 OK 200\r\nBlah\r\n\r\nHey cURL";
+  char *hello = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close\r\nContent-Type: text/html; charset=utf-8\r\n\r\nHey cURL";
   //size_t hello_size = strlen(hello);
   char response_str[256];
   char conn_id_str[256];
   snprintf(conn_id_str, 256, "%d",conn_id);
   size_t conn_id_str_len = strlen(conn_id_str);
-  snprintf(response_str, 256, "%s %d:%d, %s", uuid, conn_id_str_len, conn_id, hello);
+  snprintf(response_str, 256, RESPONSE_FORMAT, uuid, conn_id_str_len, conn_id, hello);
   size_t buffer_size = strlen(response_str);
   char *response_buffer = calloc(buffer_size,sizeof(char));
   memcpy(response_buffer,response_str,buffer_size);
@@ -164,12 +166,34 @@ int main(int argc, char **args){
       exit(EXIT_FAILURE);
   }
 
+  /**
+   * Why doesn't this disconnect statement work?
+   */
+  zmq_msg_t close_msg;
+  zmq_msg_init(&close_msg);
+  snprintf(response_str, 256, CLOSE_FORMAT, uuid, conn_id_str_len, conn_id);
+  buffer_size = strlen(response_str);
+  memcpy(response_buffer,response_str,buffer_size);
+  zmq_msg_init_data(&close_msg,response_buffer,buffer_size,zmq_dummy_free, NULL);
+  fprintf(stdout,"Sending close statement: %s", response_str);
+  zmq_retval = zmq_send(pub_socket,&response_msg,0);
+  if(zmq_retval != 0){
+      fprintf(stderr,"could not send close message");
+      exit(EXIT_FAILURE);
+  }
+
+
   free(headers);
   free(body);
   zmq_msg_close(&msg);
+  // zmq_msg_close(&close_msg); // big error here. Track down later.
   /**
    * TEARING DOWN ZMQ
    */
+  if(zmq_close(pub_socket) != 0){
+      fprintf(stderr, "Could not close ZMQ_PUB socket");
+      exit(EXIT_FAILURE);
+  }
   if(zmq_close(pull_socket) != 0){
       fprintf(stderr, "Could not close ZMQ_PULL socket");
       exit(EXIT_FAILURE);
