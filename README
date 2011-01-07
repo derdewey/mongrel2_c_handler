@@ -4,18 +4,53 @@ I am trying to bridge a C-only library into the jsocket/websocket world and I th
 
 == Prequisites ==
 
-mongrel2 installed and configured to your liking (see my deployment example to get going, config.sh and start.sh help out)
+mongrel2
 http://www.mongrel2.org/
+Installed and configured to your liking (see my deployment example to get going, config.sh and start.sh help out)
+
+libjson0 / libjson0-dev
+http://oss.metaparadigm.com/json-c/
 
 peg/leg
 http://piumarta.com/software/peg/
+Not used yet... but I'd like to!
 
-== Parsing Incoming Requests ==
-Mongrel2 uses lemon but I don't know jack about how to use those. But I have used treetop for ruby, so let's peg it! peg/leg is a C-code generator that uses a similar rule format to treetop. Let's see if I can use that.
+== Parsing Messages From Mongrel2 ==
+Mongrel talks to handlers use zmq_msg_t's. You will be sending and receiving these over the course of your task. A zmq_mst_t has a opaque data field where your webserver-related info comes in -- you must parse the data field according the to the mongrel2 format (aka, a protocol on top of zmq).
+
+Fields that may need explanation:
+UUID: The name of the mongrel2 instance that will be helping you out today. 128 bit number in hex with '-' thrown in. Always 36 characters.
+CONN_ID: Requests get an ID, a token to keep you and mongrel on the same page. Monotonic, always increasing int starts from 0.
+PATH: URL you know and love. Hopefully that shit is escaped!
+HEADERS: JSON dictionary
+BODY: An opaque buffer
+
+Spaces and commas are literal elements of the protocol. ZMQ message format for incoming requests:
+
+UUID CONN_ID PATH HEADER_NETSTRING,BODY_NETSTRING,
+
+Netstrings are defined as:
+STRINGIFEID_LENGTH_OF_DATA:DATA
+I sscanf the length into a uint32_t, allocate a buffer of that size, and put opaque_data into it.
+
+== Sending response to Mongrel2 ==
+Simpler than parsing the message.
+STR_CONN_LIST: 1-128 CONN_ID(s) seperated by a space. Ex: "0 2 3"
+STR_CONN_LIST_LENGTH: For STR_CONN_LIST example you put 5
+CONN_NETSTRING: Expands as "STR_CONN_LIST_LENGTH:STR_CONN_LIST", where ':' is literal.
+OPAQUE_RESPONSE: Whatever you want, mongrel won't touch it
+
+UUID CONN_NETSTRING, OPAQUE_RESPONSE
+
+Reasoning for a CONN_NETSTRING: Allow a single handler message to go to multiple clients. Web multicast made easy? Dunno, could be handy with websocket-y stuff.
+
+== Large messages ==
+I think you'll have to use ZMQ's getsockopt to see if there are more messages related to what you're processing. Large requests will be split up into multiple messages. No support for that just yet.
 
 == Contact ==
+Feel free to send me a message through github. Patches are welcome (and how!)!
 
-Feel free to send me a message through github. Patches are welcome!
-
-My name:
+Author:
 Xavier Lange
+Copyright:
+Whatever mongrel2 uses.
