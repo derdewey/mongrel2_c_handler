@@ -14,12 +14,96 @@
 #include<zmq.h>
 #include<assert.h>
 
-char *SENDER_ID = "82209006-86FF-4982-B5EA-D1E29E55D481";
-char *RESPONSE_FORMAT = "%s %d:%d, %s";
-char *CLOSE_FORMAT = "%s %d:%d, ";
+#define SENDER_ID "82209006-86FF-4982-B5EA-D1E29E55D481"
+const char *RESPONSE_FORMAT = "%s %d:%d, %s";
+// const char *CLOSE_FORMAT = "%s %d:%d, ";
+const char *CLOSE_FORMAT = "\0";
 
 void zmq_dummy_free(void *data, void *hint){
     free(data);
+}
+
+struct mongrel2_ctx_t{
+    void* zmq_context;
+};
+typedef struct mongrel2_ctx_t mongrel2_ctx;
+
+struct mongrel2_socket_t{
+    void* zmq_socket;
+};
+typedef struct mongrel2_socket_t mongrel2_socket;
+
+void mongrel2_init(mongrel2_ctx *ctx){
+    ctx->zmq_context = zmq_init(1);
+    if(ctx->zmq_context == NULL){
+        fprintf(stderr, "Could not initialize zmq context");
+        exit(EXIT_FAILURE);
+    }
+}
+
+mongrel2_socket* mongrel2_alloc_socket(mongrel2_ctx *ctx, int type){
+    mongrel2_socket *ptr = malloc(sizeof(mongrel2_socket));
+    ptr = zmq_socket(ctx->zmq_context, type);
+    if(ptr == NULL){
+        fprintf(stderr, "Could not allocate socket");
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
+}
+mongrel2_socket* mongrel2_pull_socket(mongrel2_ctx *ctx){
+    mongrel2_socket *socket;
+    socket = mongrel2_alloc_socket(ctx,ZMQ_PULL);
+    return socket;
+}
+mongrel2_socket* mongrel2_pub_socket(mongrel2_ctx *ctx){
+    mongrel2_socket *socket;
+    socket = mongrel2_alloc_socket(ctx,ZMQ_PUB);
+    return socket;
+}
+void mongrel2_close(mongrel2_socket *socket){
+    zmq_close(socket->zmq_socket);
+    free(socket);
+}
+
+void mongrel2_connect(mongrel2_socket* socket, char* dest){
+    int zmq_retval;
+    zmq_retval = zmq_connect(socket->zmq_socket, dest);
+    if(zmq_retval != 0){
+      switch(errno){
+          case EPROTONOSUPPORT : {
+              fprintf(stderr, "Protocol not supported");
+              break;
+          }
+          case ENOCOMPATPROTO : {
+              fprintf(stderr, "Protocol not compatible with socket type");
+              break;
+          }
+          case ETERM : {
+              fprintf(stderr, "ZMQ context has already been terminated");
+              break;
+          }
+          case EFAULT : {
+              fprintf(stderr, "A NULL socket was provided");
+              break;
+          }
+      }
+    }
+    return;
+}
+
+int thing(int argc, char **args){
+    mongrel2_ctx ctx;
+    mongrel2_init(&ctx);
+
+    mongrel2_socket *pull_socket = mongrel2_pull_socket(&ctx);
+    mongrel2_connect(pull_socket,"tcp://127.0.0.1:9999");
+
+    pull_socket = NULL;
+
+    //mongrel2_socket *pub_socket = mongrel2_pub_socket(&ctx);
+    //mongrel2_connect(pub_socket,"tcp://127.0.0.1:9998");
+    //pub_socket = NULL;
+    return 0;
 }
 
 int main(int argc, char **args){
@@ -43,6 +127,26 @@ int main(int argc, char **args){
       fprintf(stderr, "Could not create a ZMQ_PULL socket");
       exit(EXIT_FAILURE);
   }
+
+  zmq_retval = zmq_setsockopt(pull_socket,ZMQ_IDENTITY,SENDER_ID,sizeof(SENDER_ID)-1);
+  if(zmq_retval != 0){
+      switch(errno){
+          case EINVAL : {
+              fprintf(stderr, "Unknown setsockopt property");
+              break;
+          }
+          case ETERM : {
+              fprintf(stderr, "ZMQ context already terminated");
+              break;
+          }
+          case EFAULT : {
+              fprintf(stderr, "Socket provided was not valid");
+              break;
+          }
+      }
+      exit(EXIT_FAILURE);
+  }
+
   zmq_retval = zmq_connect(pull_socket, "tcp://127.0.0.1:9999");
   if(zmq_retval != 0){
       switch(errno){
@@ -148,7 +252,7 @@ int main(int argc, char **args){
 
   zmq_msg_t response_msg;
   zmq_msg_init(&response_msg);
-  char *hello = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close\r\nContent-Type: text/html; charset=utf-8\r\n\r\nHey cURL";
+  char *hello = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 0\r\nConnection: close\r\n\r\nBye";
   //size_t hello_size = strlen(hello);
   char response_str[256];
   char conn_id_str[256];
@@ -165,18 +269,21 @@ int main(int argc, char **args){
       fprintf(stderr, "aww shit. couldn't write");
       exit(EXIT_FAILURE);
   }
+  zmq_msg_close(&msg);
+
 
   /**
    * Why doesn't this disconnect statement work?
    */
   zmq_msg_t close_msg;
   zmq_msg_init(&close_msg);
-  snprintf(response_str, 256, CLOSE_FORMAT, uuid, conn_id_str_len, conn_id);
+  // snprintf(response_str, 256, CLOSE_FORMAT, uuid, conn_id_str_len, conn_id);
+  //snprintf(response_str, 256, CLOSE_FORMAT);
   buffer_size = strlen(response_str);
   memcpy(response_buffer,response_str,buffer_size);
-  zmq_msg_init_data(&close_msg,response_buffer,buffer_size,zmq_dummy_free, NULL);
-  fprintf(stdout,"Sending close statement: %s", response_str);
-  zmq_retval = zmq_send(pub_socket,&response_msg,0);
+  zmq_msg_init_data(&close_msg,(void*)"",0,zmq_dummy_free, NULL);
+  fprintf(stdout,"Sending close statement: '%s'\n", response_str);
+  zmq_retval = zmq_send(pub_socket,&close_msg,0);
   if(zmq_retval != 0){
       fprintf(stderr,"could not send close message");
       exit(EXIT_FAILURE);
@@ -185,7 +292,6 @@ int main(int argc, char **args){
 
   free(headers);
   free(body);
-  zmq_msg_close(&msg);
   // zmq_msg_close(&close_msg); // big error here. Track down later.
   /**
    * TEARING DOWN ZMQ
