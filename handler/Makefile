@@ -5,4 +5,4 @@ mongrel_handler.o : mongrel_handler.h mongrel_handler.c
 	gcc -c -std=c99 -g -Wall -Werror -o mongrel_handler.o mongrel_handler.c
 
 clean : 
-	rm -rf *.o
+	rm -rf *.o mongrel_handler
