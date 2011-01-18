@@ -23,14 +23,12 @@
 const struct tagbstring SPACE = bsStatic(" ");
 const struct tagbstring COLON = bsStatic(":");
 const struct tagbstring COMMA = bsStatic(",");
+const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
 
-#define MAX_BUFFER_LEN 2048
-const char *RESPONSE_FORMAT = "%s %d:%d, %s";
-// const char *CLOSE_FORMAT = "%s %d:%d, ";
-const char *CLOSE_FORMAT = "\0";
+const char *RESPONSE_HEADER = "%s %d:%d, ";
 
 void zmq_dummy_free(void *data, void *hint){
-    free(data);
+    bdestroy(data);
 }
 
 struct mongrel2_ctx_t{
@@ -47,6 +45,7 @@ typedef struct mongrel2_socket_t mongrel2_socket;
 struct mongrel2_request_t{
     bstring uuid;
     int conn_id;
+    bstring conn_id_bstr;
     bstring path;
     int body_len;
     bstring headers;
@@ -134,7 +133,7 @@ void mongrel2_connect(mongrel2_socket* socket, const char* dest){
 
 // RECEIVE OPERATIONS
 /**
- * Really awful hand-made parser for netstrings. Must modify to copy string contents!
+ * Honky-dory hand-made parser for mongrel2's request format
  *
  * Will only work for small requests, although structure is generous. Beware!
  * @param netstring
@@ -153,7 +152,6 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
     exit(EXIT_FAILURE);
   }
 
-  // sscanf(netstring,"%s %d %s %d",req->uuid, &req->conn_id, req->path, &req->headers_len);
   bstring bnetstring = bfromcstr(raw_mongrel_request);
   int suuid = 0, euuid;
   int sconnid, econnid;
@@ -170,15 +168,13 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   }
 
   // Extract the Connection ID
-  bstring tempconnbstr;
   sconnid = euuid+1; // Skip over the space delimiter
   econnid = binchr(bnetstring, sconnid, &SPACE);
-  tempconnbstr = bmidstr(bnetstring,sconnid,econnid-sconnid);
-  if(tempconnbstr == NULL){
+  req->conn_id_bstr = bmidstr(bnetstring,sconnid,econnid-sconnid);
+  if(req->conn_id_bstr == NULL){
       fprintf(stderr, "Could not extract connection id");
   }
-  sscanf(bdata(tempconnbstr),"%d",&req->conn_id);
-  bdestroy(tempconnbstr);
+  sscanf(bdata(req->conn_id_bstr),"%d",&req->conn_id);
 
   // Extract the Path
   spath = econnid+1; // Skip over the space delimiter
@@ -265,39 +261,40 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
     return req;
 }
 
-void mongrel2_send(mongrel2_socket *pub_socket, mongrel2_request *req, char* netstring, int netstring_len){
-    zmq_msg_t response;
-    zmq_msg_init_data(&response,netstring,netstring_len,zmq_dummy_free,NULL);
+/**
+ * Removed the mongrel2_request as a param from here. That info is encoded in
+ * the response buff. Bad idea?
+ * @param pub_socket
+ * @param response_buff
+ */
+void mongrel2_send(mongrel2_socket *pub_socket, bstring response){
+    zmq_msg_t zmq_response;
+    zmq_msg_init_data(&zmq_response,bdata(response),blength(response),zmq_dummy_free,NULL);
 
-    zmq_send(pub_socket->zmq_socket,&response,0);
+    zmq_send(pub_socket->zmq_socket,&zmq_response,0);
 
-    zmq_msg_close(&response);
+    #ifdef DEBUG
+    fprintf(stdout,"=======MONGREL2_SEND==========\n");
+    fprintf(stdout,"Sending: ''%s''\n",bdata(response));
+    fprintf(stdout,"==============================\n");
+    #endif
+
+    zmq_msg_close(&zmq_response);
 }
-void mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, char* headers, char* body){
-    // RESPONSE FORMAT
-    // "%s %d:%s,"
-    // 1st - Connection ID
-    // 2nd - Length of response
-    // 3rd - Response
-    //
-    char* seperator = "\r\n\r\n";
-    void* buffer_ns = calloc(MAX_BUFFER_LEN,sizeof(char));
-    int body_len = strlen(body), headers_len = strlen(headers), sep_len = strlen(seperator);
-    void* http_buf = calloc(body_len+headers_len+sep_len,sizeof(char));
-    strcat(http_buf,headers);
-    strcat(http_buf,seperator);
-    strcat(http_buf,body);
+void mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring headers, const_bstring body){
+    // All the info except headers and body
+    bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
 
-    char conn_id_buf[16];
-    snprintf(conn_id_buf,16,"%d",req->conn_id);
-    
-    snprintf(buffer_ns,MAX_BUFFER_LEN,"%s %d:%d, ",bdata(req->uuid),strlen(conn_id_buf),req->conn_id);
-    strcat(buffer_ns,http_buf);
+    // Now tack on headers and body
+    bconcat(response,headers);
+    bconcat(response,&SEPERATOR);
+    bconcat(response,body);
 
-    free(http_buf);
-    
-    int buffer_len = strlen(buffer_ns);
-    mongrel2_send(pub_socket,req,buffer_ns,buffer_len);
+    mongrel2_send(pub_socket,response);
+}
+void mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
+    bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
+    mongrel2_send(pub_socket,response);
 }
 
 // CLEANUP OPERATIONS
@@ -306,6 +303,7 @@ void mongrel2_finalize_request(mongrel2_request *req){
     bdestroy(req->headers);
     bdestroy(req->path);
     bdestroy(req->uuid);
+    bdestroy(req->conn_id_bstr);
     free(req);
     return;
 }
@@ -339,12 +337,14 @@ int main(int argc, char **args){
     mongrel2_request *request;
     request = mongrel2_recv(pull_socket);
 
-    char *headers = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 3\r\nConnection: close";
-    char *body = "HI!";
-    
-    mongrel2_reply(pub_socket, request, headers, body);
-    mongrel2_reply(pub_socket, request, "", "");
-    
+    const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 3\r\nConnection: close");
+    const bstring body = bfromcstr("HI!");
+
+    mongrel2_reply_http(pub_socket, request, headers, body);
+    bdestroy(headers);
+    bdestroy(body);
+
+    mongrel2_disconnect(pub_socket, request);
     mongrel2_finalize_request(request);
     
     mongrel2_close(pull_socket);

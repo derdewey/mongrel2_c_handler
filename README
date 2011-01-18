@@ -18,6 +18,8 @@ Not used yet... but I'd like to!
 == Parsing Messages From Mongrel2 ==
 Mongrel talks to handlers use zmq_msg_t's. You will be sending and receiving these over the course of your task. A zmq_mst_t has a opaque data field where your webserver-related info comes in -- you must parse the data field according the to the mongrel2 format (aka, a protocol on top of zmq).
 
+My C handler will parse for you and return a mongrel2_request_t. This has all the info you'll need to get going.
+
 Fields that may need explanation:
 UUID: The name of the mongrel2 instance that will be helping you out today. 128 bit number in hex with '-' thrown in. Always 36 characters.
 CONN_ID: Requests get an ID, a token to keep you and mongrel on the same page. Monotonic, always increasing int starts from 0.
