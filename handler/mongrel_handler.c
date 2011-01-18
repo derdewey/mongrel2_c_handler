@@ -275,6 +275,8 @@ int main(int argc, char **args){
     char *headers = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 3\r\nConnection: close";
     char *body = "HI!";
     mongrel2_reply(pub_socket, request, headers, body);
+    mongrel2_reply(pub_socket, request, "", "");
+    
     mongrel2_finalize_request(request);
     
     mongrel2_close(pull_socket);
