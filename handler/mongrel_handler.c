@@ -17,6 +17,7 @@
 #define DEBUG
 
 #define SENDER_ID "82209006-86FF-4982-B5EA-D1E29E55D481"
+#define MAX_BUFFER_LEN 2048
 const char *RESPONSE_FORMAT = "%s %d:%d, %s";
 // const char *CLOSE_FORMAT = "%s %d:%d, ";
 const char *CLOSE_FORMAT = "\0";
@@ -206,18 +207,38 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
     return req;
 }
 
-void mongrel2_send(mongrel2_socket *pub_socket, mongrel2_request *req, char* headers, char* body){
+void mongrel2_send(mongrel2_socket *pub_socket, mongrel2_request *req, char* netstring, int netstring_len){
     zmq_msg_t response;
-    char* seperator = "\r\n\r\n";
-    // zmq_msg_init(&response);
-    int buffer_len = strlen(headers) + strlen(body) + strlen(seperator);
-    void* buffer = calloc(buffer_len,sizeof(char));
-
-    zmq_msg_init_data(&response,buffer,buffer_len,zmq_dummy_free,NULL);
+    zmq_msg_init_data(&response,netstring,netstring_len,zmq_dummy_free,NULL);
 
     zmq_send(pub_socket->zmq_socket,&response,0);
 
     zmq_msg_close(&response);
+}
+void mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, char* headers, char* body){
+    // RESPONSE FORMAT
+    // "%s %d:%s,"
+    // 1st - Connection ID
+    // 2nd - Length of response
+    // 3rd - Response
+    //
+    char* seperator = "\r\n\r\n";
+    void* buffer_ns = calloc(MAX_BUFFER_LEN,sizeof(char));
+    int body_len = strlen(body), headers_len = strlen(headers), sep_len = strlen(seperator);
+    void* http_buf = calloc(body_len+headers_len+sep_len,sizeof(char));
+    strcat(http_buf,headers);
+    strcat(http_buf,seperator);
+    strcat(http_buf,body);
+
+    char conn_id_buf[16];
+    snprintf(conn_id_buf,16,"%d",req->conn_id);
+    
+    snprintf(buffer_ns,MAX_BUFFER_LEN,"%s %d:%d, ",req->uuid,strlen(conn_id_buf),req->conn_id);
+    strcat(buffer_ns,http_buf);
+
+    
+    int buffer_len = strlen(buffer_ns);
+    mongrel2_send(pub_socket,req,buffer_ns,buffer_len);
 }
 
 // CLEANUP OPERATIONS
@@ -251,14 +272,10 @@ int main(int argc, char **args){
     mongrel2_request *request;
     request = mongrel2_recv(pull_socket);
 
-    char *resp_headers = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 0\r\nConnection: close";
-    char *resp_body = "HI!";
-    mongrel2_send(pub_socket, request, resp_headers, resp_body);
-
-    
+    char *headers = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 3\r\nConnection: close";
+    char *body = "HI!";
+    mongrel2_reply(pub_socket, request, headers, body);
     mongrel2_finalize_request(request);
-
-
     
     mongrel2_close(pull_socket);
     mongrel2_close(pub_socket);
