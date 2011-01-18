@@ -12,11 +12,18 @@
 #include<string.h>
 #include<stdint.h>
 #include<zmq.h>
+#include "bstr/bstrlib.h"
+#include "bstr/bstraux.h"
 #include<assert.h>
 
 #define DEBUG
-
 #define SENDER_ID "82209006-86FF-4982-B5EA-D1E29E55D481"
+//struct tagbstring SENDER_ID = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481")
+
+const struct tagbstring SPACE = bsStatic(" ");
+const struct tagbstring COLON = bsStatic(":");
+const struct tagbstring COMMA = bsStatic(",");
+
 #define MAX_BUFFER_LEN 2048
 const char *RESPONSE_FORMAT = "%s %d:%d, %s";
 // const char *CLOSE_FORMAT = "%s %d:%d, ";
@@ -38,13 +45,12 @@ typedef struct mongrel2_socket_t mongrel2_socket;
 
 // sscanf(data,"%s %d %s %d",uuid, &conn_id, path, &header_len);
 struct mongrel2_request_t{
-    char uuid[37];
+    bstring uuid;
     int conn_id;
-    char path[2048];
-    int headers_len;
+    bstring path;
     int body_len;
-    char headers[2048];
-    char body[2048];
+    bstring headers;
+    bstring body;
 };
 typedef struct mongrel2_request_t mongrel2_request;
 
@@ -134,10 +140,10 @@ void mongrel2_connect(mongrel2_socket* socket, const char* dest){
  * @param netstring
  * @return
  */
-mongrel2_request *mongrel2_parse_netstring(const char* netstring){
+mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   #ifdef DEBUG
   fprintf(stdout, "======NETSTRING======\n");
-  fprintf(stdout, "%s\n",netstring);
+  fprintf(stdout, "%s\n",raw_mongrel_request);
   fprintf(stdout, "=====================\n");
   #endif
 
@@ -147,44 +153,96 @@ mongrel2_request *mongrel2_parse_netstring(const char* netstring){
     exit(EXIT_FAILURE);
   }
 
-  sscanf(netstring,"%s %d %s %d",req->uuid, &req->conn_id, req->path, &req->headers_len);
+  // sscanf(netstring,"%s %d %s %d",req->uuid, &req->conn_id, req->path, &req->headers_len);
+  bstring bnetstring = bfromcstr(raw_mongrel_request);
+  int suuid = 0, euuid;
+  int sconnid, econnid;
+  int spath, epath;
+  int sheader, eheader;
+  int sbody, ebody;
 
-  // Am I allowe to do this? Will the C police write me up?
-  char* cursor = (char*)netstring;
-  cursor = strchr(cursor, ' '); // over UUID
-  ++cursor; // consume the space
-  cursor = strchr(cursor, ' '); // over SeqID
-  ++cursor; // consume the space
-  cursor = strchr(cursor, ' '); // over Path
-  ++cursor; // consume the space
-  cursor = strchr(cursor, ':'); // over header_len
-  ++cursor; // consume the semi-colon
-
-  memcpy(req->headers, cursor, req->headers_len);
-  req->headers[req->headers_len] = '\0';
-  for(int i=0; i<req->headers_len; i++){   // cursor = cursor + header_len; instead of loop?
-      ++cursor;
+  // Extract the UUID
+  euuid = binchr(bnetstring, suuid, &SPACE);
+  req->uuid = bmidstr(bnetstring, suuid, euuid-suuid);
+  if(req->uuid == NULL){
+      fprintf(stderr,"Could not extract UUID!");
+      exit(EXIT_FAILURE);
   }
-  cursor = strchr(cursor, ',');
-  ++cursor; // consume ,
-  sscanf(cursor, "%d", &req->body_len);
-  // fprintf(stdout,"Body Length: %d\n",req->body_len);
-  cursor = strchr(cursor, ':');
-  ++cursor; // consume :
-  // req->body = calloc(body_len+1,sizeof(char*));
-  memcpy(req->body, cursor, req->body_len);
-  // fprintf(stdout,"Body: %s\n",req->body);
-  // should figure out assertion for ',' at end of message
+
+  // Extract the Connection ID
+  bstring tempconnbstr;
+  sconnid = euuid+1; // Skip over the space delimiter
+  econnid = binchr(bnetstring, sconnid, &SPACE);
+  tempconnbstr = bmidstr(bnetstring,sconnid,econnid-sconnid);
+  if(tempconnbstr == NULL){
+      fprintf(stderr, "Could not extract connection id");
+  }
+  sscanf(bdata(tempconnbstr),"%d",&req->conn_id);
+  bdestroy(tempconnbstr);
+
+  // Extract the Path
+  spath = econnid+1; // Skip over the space delimiter
+  epath = binchr(bnetstring, spath, &SPACE);
+  req->path = bmidstr(bnetstring,spath,epath-spath);
+  if(req->path == NULL){
+      fprintf(stderr, "Could not extract Path");
+      exit(EXIT_FAILURE);
+  }
+
+  // Extract the headers
+  // First we grab the length value as an int
+  bstring tempheaderlenbstr;
+  sheader = epath+1; // Skip over the space delimiter
+  eheader = binchr(bnetstring, sheader, &COLON);
+  tempheaderlenbstr = bmidstr(bnetstring,sheader,eheader-sheader);
+  int headerlen;
+  sscanf(bdata(tempheaderlenbstr),"%d",&headerlen);
+  bdestroy(tempheaderlenbstr);
+
+  // Now that we know the header length we can actually extract it
+  sheader = eheader+1; // Skip over the number and the colon
+  eheader = sheader+headerlen;
+  req->headers = bmidstr(bnetstring,sheader,eheader-sheader);
+  if(req->headers == NULL){
+      fprintf(stderr,"could not extract headers");
+      exit(EXIT_FAILURE);
+  } else if(blength(req->headers) != headerlen){
+      fprintf(stderr,"Expected headerlen to be %d, got %d",headerlen,blength(req->headers));
+      exit(EXIT_FAILURE);
+  }
+
+  // Extract the body
+  // First we grab the length value as an int
+  bstring tempbodylenbstr;
+  sbody = eheader+1; // Skip over the comma
+  ebody = binchr(bnetstring,sbody,&COLON);
+  tempbodylenbstr = bmidstr(bnetstring,sbody,ebody-sbody);
+  int bodylen;
+  sscanf(bdata(tempbodylenbstr),"%d",&bodylen);
+  bdestroy(tempbodylenbstr);
+
+  // Nowe we have the body len we can extract the payload
+  sbody = ebody+1; // Skip over the number and the colon
+  ebody = sbody+bodylen;
+  req->body = bmidstr(bnetstring,sbody,ebody-sbody);
+  if(req->body == NULL){
+      fprintf(stderr,"could not extract body");
+      exit(EXIT_FAILURE);
+  } else if(blength(req->body) != bodylen){
+      fprintf(stderr,"Expected body to be %d, got %d",bodylen,blength(req->body));
+      exit(EXIT_FAILURE);
+  }
 
   #ifdef DEBUG
   fprintf(stdout,"========PARSE_NETSTRING=========\n");
-  fprintf(stdout,"SERVER_UUID: %s\n",req->uuid);
+  fprintf(stdout,"SERVER_UUID: %s\n",bdata(req->uuid));
   fprintf(stdout,"CONNECTION_ID: %d\n",req->conn_id);
-  fprintf(stdout,"PATH: %s\n",req->path);
-  fprintf(stdout,"HEADERS: %s\n",req->headers);
+  fprintf(stdout,"PATH: %s\n",bdata(req->path));
+  fprintf(stdout,"HEADERS: %s\n",bdata(req->headers));
   fprintf(stdout,"================================\n");
   #endif
 
+  bdestroy(bnetstring);
   return req;
 }
 
@@ -201,7 +259,7 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
     zmq_recv(pull_socket->zmq_socket,&msg,0);
     char* raw_request = (char*) zmq_msg_data(&msg);
 
-    mongrel2_request* req = mongrel2_parse_netstring(raw_request);
+    mongrel2_request* req = mongrel2_parse_request(raw_request);
 
     zmq_msg_close(&msg);
     return req;
@@ -233,9 +291,10 @@ void mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, char* he
     char conn_id_buf[16];
     snprintf(conn_id_buf,16,"%d",req->conn_id);
     
-    snprintf(buffer_ns,MAX_BUFFER_LEN,"%s %d:%d, ",req->uuid,strlen(conn_id_buf),req->conn_id);
+    snprintf(buffer_ns,MAX_BUFFER_LEN,"%s %d:%d, ",bdata(req->uuid),strlen(conn_id_buf),req->conn_id);
     strcat(buffer_ns,http_buf);
 
+    free(http_buf);
     
     int buffer_len = strlen(buffer_ns);
     mongrel2_send(pub_socket,req,buffer_ns,buffer_len);
@@ -243,6 +302,10 @@ void mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, char* he
 
 // CLEANUP OPERATIONS
 void mongrel2_finalize_request(mongrel2_request *req){
+    bdestroy(req->body);
+    bdestroy(req->headers);
+    bdestroy(req->path);
+    bdestroy(req->uuid);
     free(req);
     return;
 }
@@ -260,6 +323,10 @@ void mongrel2_deinit(mongrel2_ctx *ctx){
 }
 
 int main(int argc, char **args){
+    bstring str = bfromcstr("this is just a test!");
+    fprintf(stdout, "%s\n", bdata(str));
+    bdestroy(str);
+
     mongrel2_ctx ctx;
     mongrel2_init(&ctx);
 
@@ -274,6 +341,7 @@ int main(int argc, char **args){
 
     char *headers = "HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 3\r\nConnection: close";
     char *body = "HI!";
+    
     mongrel2_reply(pub_socket, request, headers, body);
     mongrel2_reply(pub_socket, request, "", "");
     
