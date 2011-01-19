@@ -25,8 +25,8 @@ const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
 
 const char *RESPONSE_HEADER = "%s %d:%d, ";
 
-void zmq_bstr_free(void *data, void *hint){
-    bdestroy(data);
+void zmq_bstr_free(void *data, void *bstr){
+    bdestroy(bstr);
 }
 
 struct mongrel2_ctx_t{
@@ -271,7 +271,13 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
  */
 void mongrel2_send(mongrel2_socket *pub_socket, bstring response){
     zmq_msg_t *msg = calloc(1,sizeof(zmq_msg_t));
-    zmq_msg_init_data(msg,bdata(response),blength(response),zmq_bstr_free,NULL);
+
+    /**
+     * zmq_bstr_free was calling free on bdata(response) which was wrong!
+     * It needs to be called on the bstring itself. So that gets passed
+     * in as the hint. Whew.
+     */
+    zmq_msg_init_data(msg,bdata(response),blength(response),zmq_bstr_free,response);
 
     zmq_send(pub_socket->zmq_socket,msg,0);
     zmq_msg_close(msg);
@@ -346,11 +352,10 @@ int main(int argc, char **args){
     request = mongrel2_recv(pull_socket);
 
     const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close");
-    // const bstring body = bfromcstr("HI!");
 
+    btoupper(request->body);
     mongrel2_reply_http(pub_socket, request, headers, request->body);
     bdestroy(headers);
-    //bdestroy(body);
 
     bdestroy(pull_addr);
     bdestroy(pub_addr);
@@ -358,7 +363,7 @@ int main(int argc, char **args){
     mongrel2_disconnect(pub_socket, request);
     mongrel2_request_finalize(request);
     
-    //mongrel2_close(pull_socket);
+    mongrel2_close(pull_socket);
     mongrel2_close(pub_socket);
     mongrel2_deinit(ctx);
     return 0;
