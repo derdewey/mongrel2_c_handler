@@ -10,15 +10,12 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<stdint.h>
 #include<zmq.h>
 #include "bstr/bstrlib.h"
 #include "bstr/bstraux.h"
-#include<assert.h>
 
 #define DEBUG
 #define SENDER_ID "82209006-86FF-4982-B5EA-D1E29E55D481"
-//struct tagbstring SENDER_ID = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481")
 
 const struct tagbstring SPACE = bsStatic(" ");
 const struct tagbstring COLON = bsStatic(":");
@@ -27,7 +24,8 @@ const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
 
 const char *RESPONSE_HEADER = "%s %d:%d, ";
 
-void zmq_dummy_free(void *data, void *hint){
+void zmq_bstr_free(void *data, void *hint){
+    fprintf(stdout,"zmq_bstr_free got called with %d\n",(int)data);
     bdestroy(data);
 }
 
@@ -250,14 +248,16 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
  * @return
  */
 mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
-    zmq_msg_t msg;
-    zmq_msg_init(&msg);
-    zmq_recv(pull_socket->zmq_socket,&msg,0);
-    char* raw_request = (char*) zmq_msg_data(&msg);
+    zmq_msg_t *msg = calloc(1,sizeof(zmq_msg_t));
+    zmq_msg_init(msg);
+    zmq_recv(pull_socket->zmq_socket,msg,0);
+    char* raw_request = (char*) zmq_msg_data(msg);
 
     mongrel2_request* req = mongrel2_parse_request(raw_request);
 
-    zmq_msg_close(&msg);
+    zmq_msg_close(msg);
+    free(msg);
+
     return req;
 }
 
@@ -269,7 +269,7 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
  */
 void mongrel2_send(mongrel2_socket *pub_socket, bstring response){
     zmq_msg_t zmq_response;
-    zmq_msg_init_data(&zmq_response,bdata(response),blength(response),zmq_dummy_free,NULL);
+    zmq_msg_init_data(&zmq_response,bdata(response),blength(response),zmq_bstr_free,NULL);
 
     zmq_send(pub_socket->zmq_socket,&zmq_response,0);
 
@@ -291,14 +291,16 @@ void mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, con
     bconcat(response,body);
 
     mongrel2_send(pub_socket,response);
+    //bdestroy(response);
 }
 void mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
     bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
     mongrel2_send(pub_socket,response);
+    bdestroy(response);
 }
 
 // CLEANUP OPERATIONS
-void mongrel2_finalize_request(mongrel2_request *req){
+void mongrel2_request_finalize(mongrel2_request *req){
     bdestroy(req->body);
     bdestroy(req->headers);
     bdestroy(req->path);
@@ -321,10 +323,6 @@ void mongrel2_deinit(mongrel2_ctx *ctx){
 }
 
 int main(int argc, char **args){
-    bstring str = bfromcstr("this is just a test!");
-    fprintf(stdout, "%s\n", bdata(str));
-    bdestroy(str);
-
     mongrel2_ctx ctx;
     mongrel2_init(&ctx);
 
@@ -337,15 +335,15 @@ int main(int argc, char **args){
     mongrel2_request *request;
     request = mongrel2_recv(pull_socket);
 
-    const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nLength: 3\r\nConnection: close");
-    const bstring body = bfromcstr("HI!");
+    const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close");
+    // const bstring body = bfromcstr("HI!");
 
-    mongrel2_reply_http(pub_socket, request, headers, body);
+    mongrel2_reply_http(pub_socket, request, headers, request->body);
     bdestroy(headers);
-    bdestroy(body);
+    //bdestroy(body);
 
     mongrel2_disconnect(pub_socket, request);
-    mongrel2_finalize_request(request);
+    mongrel2_request_finalize(request);
     
     mongrel2_close(pull_socket);
     mongrel2_close(pub_socket);
