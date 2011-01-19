@@ -6,6 +6,7 @@
  * 
  * ZMQ documentation: http://api.zeromq.org/
  * Mongrel2 documentation: http://mongrel2.org/doc/tip/docs/manual/book.wiki
+ *
  */
 #include<stdio.h>
 #include<stdlib.h>
@@ -25,7 +26,6 @@ const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
 const char *RESPONSE_HEADER = "%s %d:%d, ";
 
 void zmq_bstr_free(void *data, void *hint){
-    fprintf(stdout,"zmq_bstr_free got called with %d\n",(int)data);
     bdestroy(data);
 }
 
@@ -51,12 +51,14 @@ struct mongrel2_request_t{
 };
 typedef struct mongrel2_request_t mongrel2_request;
 
-void mongrel2_init(mongrel2_ctx *ctx){
-    ctx->zmq_context = zmq_init(1);
+mongrel2_ctx* mongrel2_init(int threads){
+    mongrel2_ctx* ctx = calloc(1,sizeof(mongrel2_ctx));
+    ctx->zmq_context = zmq_init(threads);
     if(ctx->zmq_context == NULL){
         fprintf(stderr, "Could not initialize zmq context");
         exit(EXIT_FAILURE);
     }
+    return ctx;
 }
 
 // SETUP FUNCTIONS
@@ -268,18 +270,18 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
  * @param response_buff
  */
 void mongrel2_send(mongrel2_socket *pub_socket, bstring response){
-    zmq_msg_t zmq_response;
-    zmq_msg_init_data(&zmq_response,bdata(response),blength(response),zmq_bstr_free,NULL);
+    zmq_msg_t *msg = calloc(1,sizeof(zmq_msg_t));
+    zmq_msg_init_data(msg,bdata(response),blength(response),zmq_bstr_free,NULL);
 
-    zmq_send(pub_socket->zmq_socket,&zmq_response,0);
+    zmq_send(pub_socket->zmq_socket,msg,0);
+    zmq_msg_close(msg);
+    free(msg);
 
     #ifdef DEBUG
     fprintf(stdout,"=======MONGREL2_SEND==========\n");
-    fprintf(stdout,"Sending: ''%s''\n",bdata(response));
+    fprintf(stdout,"''%s''\n",bdata(response));
     fprintf(stdout,"==============================\n");
     #endif
-
-    zmq_msg_close(&zmq_response);
 }
 void mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring headers, const_bstring body){
     // All the info except headers and body
@@ -296,6 +298,7 @@ void mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, con
 void mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
     bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
     mongrel2_send(pub_socket,response);
+    
     bdestroy(response);
 }
 
@@ -310,6 +313,10 @@ void mongrel2_request_finalize(mongrel2_request *req){
     return;
 }
 void mongrel2_close(mongrel2_socket *socket){
+    if(socket == NULL || socket->zmq_socket == NULL){
+        fprintf(stderr, "called mongrel2_close on something weird");
+        exit(EXIT_FAILURE);
+    }
     zmq_close(socket->zmq_socket);
     free(socket);
 }
@@ -319,18 +326,21 @@ void mongrel2_deinit(mongrel2_ctx *ctx){
         fprintf(stderr,"Could not terminate ZMQ context");
         exit(EXIT_FAILURE);
     }
+    free(ctx);
     return;
 }
 
 int main(int argc, char **args){
-    mongrel2_ctx ctx;
-    mongrel2_init(&ctx);
+    bstring pull_addr = bfromcstr("tcp://127.0.0.1:9999");
+    bstring pub_addr  = bfromcstr("tcp://127.0.0.1:9998");
 
-    mongrel2_socket *pull_socket = mongrel2_pull_socket(&ctx,SENDER_ID);
-    mongrel2_connect(pull_socket,"tcp://127.0.0.1:9999");
+    mongrel2_ctx *ctx = mongrel2_init(1); // Yes for threads?
+
+    mongrel2_socket *pull_socket = mongrel2_pull_socket(ctx,SENDER_ID);
+    mongrel2_connect(pull_socket, bdata(pull_addr));
     
-    mongrel2_socket *pub_socket = mongrel2_pub_socket(&ctx);
-    mongrel2_connect(pub_socket,"tcp://127.0.0.1:9998");
+    mongrel2_socket *pub_socket = mongrel2_pub_socket(ctx);
+    mongrel2_connect(pub_socket, bdata(pub_addr));
 
     mongrel2_request *request;
     request = mongrel2_recv(pull_socket);
@@ -342,11 +352,14 @@ int main(int argc, char **args){
     bdestroy(headers);
     //bdestroy(body);
 
+    bdestroy(pull_addr);
+    bdestroy(pub_addr);
+
     mongrel2_disconnect(pub_socket, request);
     mongrel2_request_finalize(request);
     
-    mongrel2_close(pull_socket);
+    //mongrel2_close(pull_socket);
     mongrel2_close(pub_socket);
-    mongrel2_deinit(&ctx);
+    mongrel2_deinit(ctx);
     return 0;
 }

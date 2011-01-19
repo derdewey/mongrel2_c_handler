@@ -35,6 +35,8 @@ Netstrings are defined as:
 STRINGIFEID_LENGTH_OF_DATA:DATA
 I sscanf the length into a uint32_t, allocate a buffer of that size, and put opaque_data into it.
 
+As my friend David says, they're like ASN.1 but easier.
+
 == Sending response to Mongrel2 ==
 Simpler than parsing the message.
 STR_CONN_LIST: 1-128 CONN_ID(s) seperated by a space. Ex: "0 2 3"
@@ -50,6 +52,27 @@ Caveat: Still trying to figure out how to tell mongrel to disconnect the client.
 
 == Large messages ==
 I think you'll have to use ZMQ's getsockopt to see if there are more messages related to what you're processing. Large requests will be split up into multiple messages. No support for that just yet.
+
+== Valgrind ==
+
+This software was developed with valgrind in hand.
+
+  valgrind --leak-check=full --gen-suppressions=yes ./mongrel_handler
+
+It throws a real shit fit about "Syscall param socketcall.sendto(msg) points to uninitialised byte(s)" and I have no idea how to work around it. It even sounds relatively harmelss.
+
+AND I QUOTE (http://markmail.org/message/oqebrtdanawsiz62)
+This (common) problem is caused by writing to a socket (or a file) bytes derived from a structure which has alignment padding, which is uninitialised. That is harmless, but the problem is I don't know of a general way to suppress these errors which doesn't also potentially hide real bugs when you mistakenly write uninitialised data to a file/ socket. The best I can suggest is to do a case-by-case suppression yourself (--gen-suppressions=yes is your friend).
+END QUOTE
+
+== Testing sample program ==
+
+I use three terminal sessions:
+(1) cd deployment && ./config.sh && ./start.sh # Mongrel2 is up
+(2) cd handler && make && ./mongrel_handler
+(3) curl -x "some post data" http://localhost:6767/
+
+Session (2) should spit out some debugging (if DEBUG is defined). Session (3) should echo what you sent in.
 
 == Contact ==
 Feel free to send me a message through github. Patches are welcome (and how!)!
