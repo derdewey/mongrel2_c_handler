@@ -45,7 +45,6 @@ struct mongrel2_request_t{
     int conn_id;
     bstring conn_id_bstr;
     bstring path;
-    int body_len;
     bstring headers;
     bstring body;
 };
@@ -305,7 +304,7 @@ void mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
     bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
     mongrel2_send(pub_socket,response);
     
-    bdestroy(response);
+    // bdestroy(response);
 }
 
 // CLEANUP OPERATIONS
@@ -348,20 +347,22 @@ int main(int argc, char **args){
     mongrel2_socket *pub_socket = mongrel2_pub_socket(ctx);
     mongrel2_connect(pub_socket, bdata(pub_addr));
 
-    mongrel2_request *request;
-    request = mongrel2_recv(pull_socket);
-
     const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close");
+    mongrel2_request *request;
 
-    btoupper(request->body);
-    mongrel2_reply_http(pub_socket, request, headers, request->body);
+    while(1){
+        request = mongrel2_recv(pull_socket);
+
+        btoupper(request->body);
+        mongrel2_reply_http(pub_socket, request, headers, request->body);
+        mongrel2_disconnect(pub_socket, request);
+        mongrel2_request_finalize(request);
+    }
+    
     bdestroy(headers);
-
+    
     bdestroy(pull_addr);
     bdestroy(pub_addr);
-
-    mongrel2_disconnect(pub_socket, request);
-    mongrel2_request_finalize(request);
     
     mongrel2_close(pull_socket);
     mongrel2_close(pub_socket);
