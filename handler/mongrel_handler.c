@@ -17,7 +17,6 @@
 
 #define DEBUG
 
-static const struct tagbstring SENDER = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481");
 static const struct tagbstring SPACE = bsStatic(" ");
 static const struct tagbstring COLON = bsStatic(":");
 static const struct tagbstring COMMA = bsStatic(",");

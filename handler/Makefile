@@ -1,3 +1,5 @@
+
+
 all : lib
 	
 mongrel_handler.o : mongrel_handler.h mongrel_handler.c
@@ -14,10 +16,10 @@ lib: mongrel_handler.o bstrlib.o bstraux.o
 #	gcc -shared -Wl,-soname,libm2handler.so.1 mongrel_handler.o bstrlib.o bstraux.o -lzmq -ljson -o libm2handler.so.1.0.1
 
 body_toupper.o : sample_handlers/body_toupper.c
-  gcc -c -std=c99 -g -Wall -Werror sample_handlers/body_toupper.c -o body_toupper.o
+	gcc -c -std=c99 -g -Wall -Werror -I/opt/local/include sample_handlers/body_toupper.c -o body_toupper.o
 
 test: lib body_toupper.o mongrel_handler.o bstrlib.o bstraux.o
-  gcc -std=c99 -g -Wall -Werror -lm2handler -L. body_toupper.o -o body_toupper_handler
+	gcc -std=c99 -g -Wall -Werror -lm2handler -lzmq -I/opt/local/include -L. -L/opt/local/lib body_toupper.o -o body_toupper_handler
 
 clean : 
-	rm -rf *.o mongrel_handler
+	rm -rf *.o mongrel_handler libm2handler.a body_toupper_handler

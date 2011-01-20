@@ -11,6 +11,7 @@
  * 
  */
 #include "../mongrel_handler.h"
+static const struct tagbstring SENDER = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481");
 int main(int argc, char **args){
     bstring pull_addr = bfromcstr("tcp://127.0.0.1:9999");
     bstring pub_addr  = bfromcstr("tcp://127.0.0.1:9998");
