@@ -12,43 +12,21 @@
 #include<stdlib.h>
 #include<string.h>
 #include<zmq.h>
-#include "bstr/bstrlib.h"
-#include "bstr/bstraux.h"
+#include "mongrel_handler.h"
+#include "bstring.h"
 
 #define DEBUG
-#define SENDER_ID "82209006-86FF-4982-B5EA-D1E29E55D481"
 
-const struct tagbstring SPACE = bsStatic(" ");
-const struct tagbstring COLON = bsStatic(":");
-const struct tagbstring COMMA = bsStatic(",");
-const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
+static const struct tagbstring SENDER = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481");
+static const struct tagbstring SPACE = bsStatic(" ");
+static const struct tagbstring COLON = bsStatic(":");
+static const struct tagbstring COMMA = bsStatic(",");
+static const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
+static const char *RESPONSE_HEADER = "%s %d:%d, ";
 
-const char *RESPONSE_HEADER = "%s %d:%d, ";
-
-void zmq_bstr_free(void *data, void *bstr){
+static void zmq_bstr_free(void *data, void *bstr){
     bdestroy(bstr);
 }
-
-struct mongrel2_ctx_t{
-    void* zmq_context;
-};
-typedef struct mongrel2_ctx_t mongrel2_ctx;
-
-struct mongrel2_socket_t{
-    void* zmq_socket;
-};
-typedef struct mongrel2_socket_t mongrel2_socket;
-
-// sscanf(data,"%s %d %s %d",uuid, &conn_id, path, &header_len);
-struct mongrel2_request_t{
-    bstring uuid;
-    int conn_id;
-    bstring conn_id_bstr;
-    bstring path;
-    bstring headers;
-    bstring body;
-};
-typedef struct mongrel2_request_t mongrel2_request;
 
 mongrel2_ctx* mongrel2_init(int threads){
     mongrel2_ctx* ctx = calloc(1,sizeof(mongrel2_ctx));
@@ -59,9 +37,23 @@ mongrel2_ctx* mongrel2_init(int threads){
     }
     return ctx;
 }
-
-// SETUP FUNCTIONS
-mongrel2_socket* mongrel2_alloc_socket(mongrel2_ctx *ctx, int type){
+int mongrel2_deinit(mongrel2_ctx *ctx){
+    int zmq_retval = zmq_term(ctx->zmq_context);
+    if(zmq_retval != 0){
+        fprintf(stderr,"Could not terminate ZMQ context");
+        exit(EXIT_FAILURE);
+    }
+    free(ctx);
+    return 0;
+}
+/**
+ * Made static because people don't necessarily need to use it. Thoughts? Should
+ * it be publicly accessible?
+ * @param ctx
+ * @param type
+ * @return
+ */
+static mongrel2_socket* mongrel2_alloc_socket(mongrel2_ctx *ctx, int type){
     mongrel2_socket *ptr = calloc(1,sizeof(mongrel2_socket));
     ptr->zmq_socket = zmq_socket(ctx->zmq_context, type);
     if(ptr == NULL || ptr->zmq_socket == NULL){
@@ -70,7 +62,14 @@ mongrel2_socket* mongrel2_alloc_socket(mongrel2_ctx *ctx, int type){
     }
     return ptr;
 }
-void mongrel2_set_identity(mongrel2_ctx *ctx, mongrel2_socket *socket, const char* identity){
+/**
+ * Identity is only needed for pull sockets (right?) so I'll only
+ * mongrel2_pull_socket will call this.
+ * @param ctx
+ * @param socket
+ * @param identity
+ */
+static void mongrel2_set_identity(mongrel2_ctx *ctx, mongrel2_socket *socket, const char* identity){
     int zmq_retval = zmq_setsockopt(socket->zmq_socket,ZMQ_IDENTITY,identity,strlen(identity));
     if(zmq_retval != 0){
       switch(errno){
@@ -103,7 +102,7 @@ mongrel2_socket* mongrel2_pub_socket(mongrel2_ctx *ctx){
     socket = mongrel2_alloc_socket(ctx,ZMQ_PUB);
     return socket;
 }
-void mongrel2_connect(mongrel2_socket* socket, const char* dest){
+int mongrel2_connect(mongrel2_socket* socket, const char* dest){
     int zmq_retval;
     zmq_retval = zmq_connect(socket->zmq_socket, dest);
     if(zmq_retval != 0){
@@ -127,10 +126,8 @@ void mongrel2_connect(mongrel2_socket* socket, const char* dest){
       }
       exit(EXIT_FAILURE);
     }
-    return;
+    return 0;
 }
-
-// RECEIVE OPERATIONS
 /**
  * Honky-dory hand-made parser for mongrel2's request format
  *
@@ -268,7 +265,7 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
  * @param pub_socket
  * @param response_buff
  */
-void mongrel2_send(mongrel2_socket *pub_socket, bstring response){
+int mongrel2_send(mongrel2_socket *pub_socket, bstring response){
     zmq_msg_t *msg = calloc(1,sizeof(zmq_msg_t));
 
     /**
@@ -287,8 +284,9 @@ void mongrel2_send(mongrel2_socket *pub_socket, bstring response){
     fprintf(stdout,"''%s''\n",bdata(response));
     fprintf(stdout,"==============================\n");
     #endif
+    return 0;
 }
-void mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring headers, const_bstring body){
+int mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring headers, const_bstring body){
     // All the info except headers and body
     bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
 
@@ -297,42 +295,31 @@ void mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, con
     bconcat(response,&SEPERATOR);
     bconcat(response,body);
 
-    mongrel2_send(pub_socket,response);
-    //bdestroy(response);
+    return mongrel2_send(pub_socket,response);
 }
-void mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
+int mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
     bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
-    mongrel2_send(pub_socket,response);
-    
-    // bdestroy(response);
+    return mongrel2_send(pub_socket,response);
 }
 
 // CLEANUP OPERATIONS
-void mongrel2_request_finalize(mongrel2_request *req){
+int mongrel2_request_finalize(mongrel2_request *req){
     bdestroy(req->body);
     bdestroy(req->headers);
     bdestroy(req->path);
     bdestroy(req->uuid);
     bdestroy(req->conn_id_bstr);
     free(req);
-    return;
+    return 0;
 }
-void mongrel2_close(mongrel2_socket *socket){
+int mongrel2_close(mongrel2_socket *socket){
     if(socket == NULL || socket->zmq_socket == NULL){
         fprintf(stderr, "called mongrel2_close on something weird");
         exit(EXIT_FAILURE);
     }
     zmq_close(socket->zmq_socket);
     free(socket);
-}
-void mongrel2_deinit(mongrel2_ctx *ctx){
-    int zmq_retval = zmq_term(ctx->zmq_context);
-    if(zmq_retval != 0){
-        fprintf(stderr,"Could not terminate ZMQ context");
-        exit(EXIT_FAILURE);
-    }
-    free(ctx);
-    return;
+    return 0;
 }
 
 int main(int argc, char **args){
@@ -341,7 +328,7 @@ int main(int argc, char **args){
 
     mongrel2_ctx *ctx = mongrel2_init(1); // Yes for threads?
 
-    mongrel2_socket *pull_socket = mongrel2_pull_socket(ctx,SENDER_ID);
+    mongrel2_socket *pull_socket = mongrel2_pull_socket(ctx,bdata(&SENDER));
     mongrel2_connect(pull_socket, bdata(pull_addr));
     
     mongrel2_socket *pub_socket = mongrel2_pub_socket(ctx);
