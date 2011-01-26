@@ -34,7 +34,7 @@ int main(int argc, char **args){
     while(1){
         request = mongrel2_recv(pull_socket);
 
-        print_json_keys(request->headers);
+        //print_json_keys(request->headers);
 
         btoupper(request->body);
         mongrel2_reply_http(pub_socket, request, headers, request->body);
