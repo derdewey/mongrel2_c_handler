@@ -11,10 +11,6 @@ Installed and configured to your liking (see my deployment example to get going,
 libjson0 / libjson0-dev
 http://oss.metaparadigm.com/json-c/
 
-peg/leg
-http://piumarta.com/software/peg/
-Not used yet... but I'd like to!
-
 == Parsing Messages From Mongrel2 ==
 Mongrel talks to handlers use zmq_msg_t's. You will be sending and receiving these over the course of your task. A zmq_mst_t has a opaque data field where your webserver-related info comes in -- you must parse the data field according the to the mongrel2 format (aka, a protocol on top of zmq).
 
@@ -48,7 +44,7 @@ UUID CONN_NETSTRING, OPAQUE_RESPONSE
 
 Reasoning for a CONN_NETSTRING: Allow a single handler message to go to multiple clients. Web multicast made easy? Dunno, could be handy with websocket-y stuff.
 
-Caveat: Still trying to figure out how to tell mongrel to disconnect the client.
+Disconnects are done by sending all the same info except you have a zero length OPAQUE_RESPONSE. But don't forget that trailing space!
 
 == Large messages ==
 I think you'll have to use ZMQ's getsockopt to see if there are more messages related to what you're processing. Large requests will be split up into multiple messages. No support for that just yet.
@@ -59,7 +55,7 @@ This software was developed with valgrind in hand.
 
   valgrind --leak-check=full --gen-suppressions=yes ./mongrel_handler
 
-It throws a real shit fit about "Syscall param socketcall.sendto(msg) points to uninitialised byte(s)" and I have no idea how to work around it. It even sounds relatively harmelss.
+It throws a real shit fit about "Syscall param socketcall.sendto(msg) points to uninitialised byte(s)" and I have no idea how to work around it. It sounds harmless.
 
 AND I QUOTE (http://markmail.org/message/oqebrtdanawsiz62)
 This (common) problem is caused by writing to a socket (or a file) bytes derived from a structure which has alignment padding, which is uninitialised. That is harmless, but the problem is I don't know of a general way to suppress these errors which doesn't also potentially hide real bugs when you mistakenly write uninitialised data to a file/ socket. The best I can suggest is to do a case-by-case suppression yourself (--gen-suppressions=yes is your friend).
@@ -80,16 +76,10 @@ Now we'll use four sessions
 (2) cd handler && make test && ./fifo_reader_handler
 (3) curl http://localhost:6767/
 (4) cd handler && cat Makefile > handler_pipe
-
-You should see that file content pop up on the curl session.
-
-
-Session (2) should spit out some debugging (if DEBUG is defined). Session (3) should echo what you sent in.
+You will see the Makefile in the curl session.
 
 == Contact ==
-Feel free to send me a message through github. Patches are welcome (and how!)!
+Feel free to send me through github. Patches are welcome (and how!)!
 
-Author:
-Xavier Lange
-License:
-Whatever mongrel2 uses.
+Author: Xavier Lange
+License: Whatever mongrel2 uses. MIT right now.
