@@ -67,10 +67,22 @@ END QUOTE
 
 == Testing sample program ==
 
+Testing body_toupper_handler
 I use three terminal sessions:
 (1) cd deployment && ./config.sh && ./start.sh # Mongrel2 is up
-(2) cd handler && make && ./mongrel_handler
+(2) cd handler && make test && ./body_toupper_handler
 (3) curl -x "some post data" http://localhost:6767/
+# The curl session should spit back the data but capitalized.
+
+Testing fifo_reader_handler
+Now we'll use four sessions
+(1) As before
+(2) cd handler && make test && ./fifo_reader_handler
+(3) curl http://localhost:6767/
+(4) cd handler && cat Makefile > handler_pipe
+
+You should see that file content pop up on the curl session.
+
 
 Session (2) should spit out some debugging (if DEBUG is defined). Session (3) should echo what you sent in.
 
