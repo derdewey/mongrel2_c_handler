@@ -9,9 +9,11 @@
  * Send a string from the command line
  * curl localhost:6767 -d "hello handler" -v
  * 
+ *
  */
 #include "../mongrel_handler.h"
 static const struct tagbstring SENDER = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481");
+
 int main(int argc, char **args){
     bstring pull_addr = bfromcstr("tcp://127.0.0.1:9999");
     bstring pub_addr  = bfromcstr("tcp://127.0.0.1:9998");
@@ -27,8 +29,12 @@ int main(int argc, char **args){
     const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close");
     mongrel2_request *request;
 
+
+
     while(1){
         request = mongrel2_recv(pull_socket);
+
+        print_json_keys(request->headers);
 
         btoupper(request->body);
         mongrel2_reply_http(pub_socket, request, headers, request->body);

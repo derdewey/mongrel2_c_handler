@@ -14,6 +14,7 @@
 #include<zmq.h>
 #include "mongrel_handler.h"
 #include "bstring.h"
+#include "json/json.h"
 
 #define DEBUG
 
@@ -131,6 +132,10 @@ int mongrel2_connect(mongrel2_socket* socket, const char* dest){
  * Honky-dory hand-made parser for mongrel2's request format
  *
  * Will only work for small requests, although structure is generous. Beware!
+ *
+ * TODO: Add some code for parsing the JSON object for headers
+ * http://joysofprogramming.com/json_parser_json-c/ is a good example
+ *
  * @param netstring
  * @return
  */
