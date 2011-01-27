@@ -78,6 +78,10 @@ Now we'll use four sessions
 (4) cd handler && cat Makefile > handler_pipe
 You will see the Makefile in the curl session.
 
+== bstring ==
+
+I wasn't sure how to put bstrings into the library and still keep the header files seperate, etc. So for now, copy the header files from in here into your own project and make sure they can be found. The object files will be satisfied by libm2hander.a.
+
 == Contact ==
 Feel free to send me through github. Patches are welcome (and how!)!
 

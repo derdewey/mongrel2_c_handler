@@ -40,7 +40,7 @@ fifo_reader_handler: lib fifo_reader.o bstrlib.o bstraux.o
 
 install: lib
 	install --owner=root libm2handler.a $(PREFIX)/lib
-	install --owner=root mongrel_handler.h $(PREFIX)/include
+	install --owner=root m2handler.h $(PREFIX)/include
 
 	# --mode=rw-r--r
 
