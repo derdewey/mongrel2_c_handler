@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../mongrel_handler.h"
+#include "../m2handler.h"
 static const struct tagbstring SENDER = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D481");
 
 int main(int argc, char **args){

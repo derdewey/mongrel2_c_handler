@@ -7,12 +7,12 @@ LFLAGS=-L/opt/local/lib
 LIBS=-lzmq $(OPTLIBS)
 PREFIX?=/usr/local
 
-SOURCES=mongrel_handler.c bstr/bstrlib.c bstrlib.c
+SOURCES=m2handler.c bstr/bstrlib.c bstrlib.c
 
 all : lib
 	
-mongrel_handler.o : mongrel_handler.h mongrel_handler.c
-	$(CC) $(CFLAGS) -c -o mongrel_handler.o mongrel_handler.c -I/opt/local/include
+mongrel_handler.o : m2handler.h m2handler.c
+	$(CC) $(CFLAGS) -c -o mongrel_handler.o m2handler.c -I/opt/local/include
 
 bstrlib.o : bstr/bstrlib.c bstr/bstrlib.h
 	$(CC) $(CFLAGS) -c -o bstrlib.o bstr/bstrlib.c
@@ -45,4 +45,4 @@ install: lib
 	# --mode=rw-r--r
 
 clean : 
-	rm -rf *.o mongrel_handler libm2handler.a body_toupper_handler
+	rm -rf *.o mongrel_handler libm2handler.a body_toupper_handler fifo_reader_handler handler_pipe
