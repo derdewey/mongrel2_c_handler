@@ -13,7 +13,8 @@
 #include<string.h>
 #include<zmq.h>
 #include "m2handler.h"
-#include "bstring.h"
+#include "bstr/bstrlib.h"
+#include "bstr/bstraux.h"
 #include "json/json.h"
 
 #define DEBUG

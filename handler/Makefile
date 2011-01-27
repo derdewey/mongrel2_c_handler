@@ -41,6 +41,10 @@ fifo_reader_handler: lib fifo_reader.o bstrlib.o bstraux.o
 install: lib
 	install --owner=root libm2handler.a $(PREFIX)/lib
 	install --owner=root m2handler.h $(PREFIX)/include
+	install -d --owner=root $(PREFIX)/include/bstr/
+	install --owner=root bstr/bstrlib.h $(PREFIX)/include/bstr/
+	install --owner=root bstr/bstraux.h $(PREFIX)/include/bstr/
+
 
 	# --mode=rw-r--r
 

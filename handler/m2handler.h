@@ -14,7 +14,8 @@
 #define MONGREL_HANDLER_H
 
 #include<zmq.h>
-#include "bstring.h"
+#include "bstr/bstrlib.h"
+#include "bstr/bstraux.h"
 
 struct mongrel2_ctx_t{
     void* zmq_context;
