@@ -236,6 +236,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   fprintf(stdout,"CONNECTION_ID: %d\n",req->conn_id);
   fprintf(stdout,"PATH: %s\n",bdata(req->path));
   fprintf(stdout,"HEADERS: %s\n",bdata(req->headers));
+  fprintf(stdout,"BODY: %s\n",bdata(req->body));
   fprintf(stdout,"================================\n");
   #endif
 

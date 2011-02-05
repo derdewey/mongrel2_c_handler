@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="69">
+  <logicalFolder name="root" displayName="root" projectFiles="true">
+    <df name="handler" root="/home/xavierlange/code/libm2handler/handler">
+      <df name="bstr" kind="SOURCE_LOGICAL_FOLDER">
+        <in>bstraux.c</in>
+        <in>bstraux.h</in>
+        <in>bstrlib.c</in>
+        <in>bstrlib.h</in>
+      </df>
+      <df name="sample_handlers" kind="SOURCE_LOGICAL_FOLDER">
+        <in>body_toupper.c</in>
+        <in>fifo_reader.c</in>
+      </df>
+      <in>m2handler.c</in>
+      <in>m2handler.h</in>
+    </df>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>/home/xavierlange/code/libm2handler/handler/Makefile</itemPath>
+      <itemPath>Makefile-handler.mk</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceRootList>
+    <Elem>/home/xavierlange/code/libm2handler/handler</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile-handler.mk</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <developmentServer>localhost</developmentServer>
+        <compilerSet>GNU|GNU</compilerSet>
+        <platform>2</platform>
+      </toolsSet>
+      <makefileType>
+        <makeTool>
+          <buildCommandWorkingDir>/home/xavierlange/code/libm2handler/handler</buildCommandWorkingDir>
+          <buildCommand>$(MAKE) -f Makefile</buildCommand>
+          <cleanCommand>$(MAKE) -f Makefile clean</cleanCommand>
+          <executablePath></executablePath>
+          <cTool>
+            <incDir>
+              <pElem>.</pElem>
+              <pElem>bstr</pElem>
+            </incDir>
+          </cTool>
+        </makeTool>
+      </makefileType>
+      <item path="/home/xavierlange/code/libm2handler/handler/sample_handlers/body_toupper.c"
+            ex="true"
+            tool="0">
+      </item>
+      <item path="/home/xavierlange/code/libm2handler/handler/sample_handlers/fifo_reader.c"
+            ex="true"
+            tool="0">
+      </item>
+    </conf>
+  </confs>
+</configurationDescriptor>
