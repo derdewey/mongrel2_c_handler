@@ -142,3 +142,24 @@ static uint32_t mongrel2_ws_count_spaces(const char *incoming){
     }
     return count;
 }
+
+// Swap this with main -- this is a protocol test
+int test(int argc, char **args){
+    /**
+     * Example from page 8 of the web socket protocol RFC : http://www.whatwg.org/specs/web-socket-protocol/
+     */
+    char *headers = "{\"PATH\":\"/dds_stream\",\"host\":\"localhost:6767\",\"sec-websocket-key1\":\"18x 6]8vM;54 *(5:  {   U1]8  z [  8\",\"origin\":\"http://localhost:6767\",\"x-forwarded-for\":\"::1\",\"upgrade\":\"WebSocket\",\"connection\":\"Upgrade\",\"sec-websocket-key2\":\"1_ tx7X d  <  nw  334J702) 7]o}` 0\",\"METHOD\":\"GET\",\"VERSION\":\"HTTP/1.1\",\"URI\":\"/dds_stream\",\"PATTERN\":\"/dds_stream\"}";
+    char *body = "Tm[K T2u";
+    mongrel2_request *req = calloc(1,sizeof(mongrel2_request));
+    req->headers = bfromcstr(headers);
+    req->body = bfromcstr(body);
+    unsigned char response[16];
+    mongrel2_ws_handshake_response(req, response);
+    if(strncmp((const char*)response,"fQJ,fN/4F4!~K~MH",16) != 0){
+        fprintf(stdout,"Response did not match expection\n");
+        fprintf(stdout,"Exepcted: fQJ,fN/4F4!~K~MH\n");
+        fprintf(stdout,"Got: %s",response);
+    }
+    mongrel2_request_finalize(req);
+    return 0;
+}

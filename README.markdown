@@ -1,17 +1,18 @@
-Mongrel2 C handler example code.
+Mongrel2 C Handler: libm2handler
+--------------------------------
 
-I am trying to bridge a C-only library into the jsocket/websocket world and I thought this could be useful to others. Hacked up parser, check. Don't really understand HTTP, check. I'm just the guy for the job!
+A C library for handling requests from Mongrel2. Includes a suite of sample handlers to get you up and running.
 
-== Prequisites ==
+### Prequisites ###
 
-mongrel2
+#### mongrel2 ####
 http://www.mongrel2.org/
-Installed and configured to your liking (see my deployment example to get going, config.sh and start.sh help out)
+Installed and configured to your liking. If you are trying out the sample handlers use ./config.sh in the deployment folder.
 
-libjson0 / libjson0-dev
+#### libjson0 / libjson0-dev ####
 http://oss.metaparadigm.com/json-c/
 
-== Parsing Messages From Mongrel2 ==
+### Parsing Messages From Mongrel2 ###
 Mongrel talks to handlers use zmq_msg_t's. You will be sending and receiving these over the course of your task. A zmq_mst_t has a opaque data field where your webserver-related info comes in -- you must parse the data field according the to the mongrel2 format (aka, a protocol on top of zmq).
 
 My C handler will parse for you and return a mongrel2_request_t. This has all the info you'll need to get going.
