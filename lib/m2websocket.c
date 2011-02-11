@@ -41,7 +41,7 @@ bstring mongrel2_ws_upgrade_headers(mongrel2_request *req){
     fprintf(stdout,"Body: %s\n",bdata(req->body));
     fprintf(stdout,"Challenge Response: %s\n",bdata(headers));
 
-    return 0;
+    return headers;
 }
 
 bstring mongrel2_ws_upgrade_body(mongrel2_request *req){

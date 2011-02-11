@@ -4,7 +4,7 @@ LOCAL_MONGREL2_LIB=-L. -lm2handler
 
 CFLAGS=-g -std=c99 -Wall -Werror
 LFLAGS=-L/opt/local/lib
-LIBS=-lzmq $(OPTLIBS)
+LIBS=-lzmq -ljson $(OPTLIBS)
 PREFIX?=/usr/local
 
 SOURCES=m2handler.c bstr/bstrlib.c bstrlib.c
