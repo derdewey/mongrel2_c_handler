@@ -1,2 +1,3 @@
 *.o
 libm2handler*
+lib/nbproject/
