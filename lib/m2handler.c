@@ -15,7 +15,7 @@
 #include "m2handler.h"
 #include "bstr/bstrlib.h"
 #include "bstr/bstraux.h"
-#include "json/json.h"
+#include<json/json.h>
 
 #define DEBUG
 
@@ -199,12 +199,12 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   // Now that we know the header length we can actually extract it
   sheader = eheader+1; // Skip over the number and the colon
   eheader = sheader+headerlen;
-  req->headers = bmidstr(bnetstring,sheader,eheader-sheader);
-  if(req->headers == NULL){
+  req->raw_headers = bmidstr(bnetstring,sheader,eheader-sheader);
+  if(req->raw_headers == NULL){
       fprintf(stderr,"could not extract headers");
       exit(EXIT_FAILURE);
-  } else if(blength(req->headers) != headerlen){
-      fprintf(stderr,"Expected headerlen to be %d, got %d",headerlen,blength(req->headers));
+  } else if(blength(req->raw_headers) != headerlen){
+      fprintf(stderr,"Expected headerlen to be %d, got %d",headerlen,blength(req->raw_headers));
       exit(EXIT_FAILURE);
   }
 
@@ -235,10 +235,12 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   fprintf(stdout,"SERVER_UUID: %s\n",bdata(req->uuid));
   fprintf(stdout,"CONNECTION_ID: %d\n",req->conn_id);
   fprintf(stdout,"PATH: %s\n",bdata(req->path));
-  fprintf(stdout,"HEADERS: %s\n",bdata(req->headers));
+  fprintf(stdout,"HEADERS: %s\n",bdata(req->raw_headers));
   fprintf(stdout,"BODY: %s\n",bdata(req->body));
   fprintf(stdout,"================================\n");
   #endif
+
+  req->headers = json_tokener_parse(bdata(req->raw_headers));
 
   bdestroy(bnetstring);
   return req;
@@ -308,13 +310,29 @@ int mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
     return mongrel2_send(pub_socket,response);
 }
 
+/**
+ * Returns a copy of the header value. You must free this yourself.
+ * @param req
+ * @param key
+ * @return
+ */
+bstring mongrel2_request_get_header(mongrel2_request *req, char* key){
+    json_object *val_json = json_object_object_get(req->headers,key);
+    const char* val_str = json_object_get_string(val_json);
+    bstring retval = bfromcstr((char*)val_str);
+    json_object_put(val_json);
+
+    return retval;
+}
+
 // CLEANUP OPERATIONS
 int mongrel2_request_finalize(mongrel2_request *req){
     bdestroy(req->body);
-    bdestroy(req->headers);
+    bdestroy(req->raw_headers);
     bdestroy(req->path);
     bdestroy(req->uuid);
     bdestroy(req->conn_id_bstr);
+    json_object_put(req->headers);
     free(req);
     return 0;
 }

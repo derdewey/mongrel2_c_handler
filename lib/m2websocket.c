@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <json/json.h>
 #include "m2handler.h"
 #include "m2websocket.h"
 #include "md5/md5.h"
@@ -29,17 +28,30 @@ int mongrel2_ws_reply_upgrade(mongrel2_request *req, mongrel2_socket *socket){
     bstring headers = mongrel2_ws_upgrade_headers(req);
     bstring body = mongrel2_ws_upgrade_body(req);
     mongrel2_reply_http(socket,req,headers,body);
+    bdestroy(headers);
+    bdestroy(body);
     return 0;
 }
 
 bstring mongrel2_ws_upgrade_headers(mongrel2_request *req){
-    bstring location = bfromcstr("ws://localhost:6767/wsstream");
-    bstring origin = bfromcstr("http://localhost:6767");
+    bstring origin = mongrel2_request_get_header(req,"origin");
+    bstring path   = mongrel2_request_get_header(req,"PATH");
+    bstring host   = mongrel2_request_get_header(req,"host");
+
+    //bstring location = bfromcstr("ws://localhost:6767/ws_handler");
+    //bstring origin = bfromcstr("http://localhost:6767");
+    bstring location = bformat("ws://%s%s",bdata(host),bdata(path));
+    fprintf(stdout,"LOCATION: %s", bdata(location));
     bstring headers = bformat(UPGRADE,bdata(location),bdata(origin));
 
-    fprintf(stdout,"Headers: %s\n",bdata(req->headers));
+    fprintf(stdout,"Headers: %s\n",bdata(req->raw_headers));
     fprintf(stdout,"Body: %s\n",bdata(req->body));
     fprintf(stdout,"Challenge Response: %s\n",bdata(headers));
+
+    bdestroy(location);
+    bdestroy(host);
+    bdestroy(path);
+    bdestroy(origin);
 
     return headers;
 }
@@ -53,9 +65,11 @@ bstring mongrel2_ws_upgrade_body(mongrel2_request *req){
 }
 
 int mongrel2_ws_handshake_response(mongrel2_request *req, unsigned char response[16]){
-    const char* headers = bdata(req->headers);
-    json_object  *json = json_tokener_parse(headers);
+    // const char* headers = bdata(req->raw_headers);
+    bstring bseckey1 = mongrel2_request_get_header(req,"sec-websocket-key1");
+    bstring bseckey2 = mongrel2_request_get_header(req,"sec-websocket-key2");
 
+/*
     json_object *seckey2_json = json_object_object_get(json,"sec-websocket-key2");
     const char* seckey2_raw = json_object_get_string(seckey2_json);
     uint32_t seckey2;
@@ -67,11 +81,18 @@ int mongrel2_ws_handshake_response(mongrel2_request *req, unsigned char response
     uint32_t seckey1;
     mongrel2_ws_extract_seckey(seckey1_raw,&seckey1);
     json_object_put(seckey1_json);
+*/
 
     // TODO : This guy will be throwing error in the near future.
-    mongrel2_ws_calculate_response(seckey1,seckey2,req->body, response);
+    // Gotta validate the websocket protocol anyway...
+    uint32_t seckey2;
+    mongrel2_ws_extract_seckey(bdata(bseckey2),&seckey2);
+    uint32_t seckey1;
+    mongrel2_ws_extract_seckey(bdata(bseckey1),&seckey1);
 
-    json_object_put(json);
+    mongrel2_ws_calculate_response(seckey1,seckey2,req->body, response);
+    bdestroy(bseckey1);
+    bdestroy(bseckey2);
     return 0;
 }
 
@@ -163,7 +184,7 @@ int test(int argc, char **args){
                     "\"PATTERN\":\"/dds_stream\"}";
     char *body = "Tm[K T2u";
     mongrel2_request *req = calloc(1,sizeof(mongrel2_request));
-    req->headers = bfromcstr(headers);
+    req->raw_headers = bfromcstr(headers);
     req->body = bfromcstr(body);
     unsigned char response[16];
     mongrel2_ws_handshake_response(req, response);

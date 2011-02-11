@@ -4,8 +4,9 @@
   <meta charset="utf-8" />
   <title>ViaSat Swarm Defender</title>
 
-  <script type="text/javascript">
-    if("WebSocket" in window){
+  <script type="text/javascript" src="js/jquery-1.5.js"></script>
+  <script type="text/javascript" >
+    var start_ws_handshake = function(){
       ws = new WebSocket("ws://localhost:6767/ws_handler");
       ws.onopen = function(){
         alert("OPENED!");
@@ -13,10 +14,20 @@
       ws.onerror = function(){
         alert("OH SHIT");
       }
-    }
+      return false;
+    };
+    $(document).ready(function(){
+      $("#ws").submit(start_ws_handshake)
+      }
+    );
   </script>
   </head>
 
   <body id="index" class="home">
+    <form id="ws" action="ws.html">
+      <input type="submit">
+        HIIII
+     </input>
+    </form>
   </body>
 </html>
