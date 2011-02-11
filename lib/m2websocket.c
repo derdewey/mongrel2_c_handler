@@ -10,7 +10,7 @@
 #include <json/json.h>
 #include "m2handler.h"
 #include "m2websocket.h"
-#include "md5.h"
+#include "md5/md5.h"
 
 static uint32_t mongrel2_ws_concat_numbers(const char *incoming);
 static uint32_t mongrel2_ws_count_spaces(const char *incoming);
@@ -26,24 +26,30 @@ static const char* UPGRADE =
     "Sec-WebSocket-Protocol: Sample";
 
 int mongrel2_ws_reply_upgrade(mongrel2_request *req, mongrel2_socket *socket){
+    bstring headers = mongrel2_ws_upgrade_headers(req);
+    bstring body = mongrel2_ws_upgrade_body(req);
+    mongrel2_reply_http(socket,req,headers,body);
+    return 0;
+}
 
-    unsigned char raw_response[16];
-    mongrel2_ws_handshake_response(req,raw_response);
-
-    // location, origin, response
-    bstring response = blk2bstr(raw_response,16);
+bstring mongrel2_ws_upgrade_headers(mongrel2_request *req){
     bstring location = bfromcstr("ws://localhost:6767/wsstream");
     bstring origin = bfromcstr("http://localhost:6767");
     bstring headers = bformat(UPGRADE,bdata(location),bdata(origin));
 
     fprintf(stdout,"Headers: %s\n",bdata(req->headers));
     fprintf(stdout,"Body: %s\n",bdata(req->body));
-    fprintf(stdout,"Response: %s\n",raw_response);
     fprintf(stdout,"Challenge Response: %s\n",bdata(headers));
 
-    mongrel2_reply_http(socket,req,headers,response);
-
     return 0;
+}
+
+bstring mongrel2_ws_upgrade_body(mongrel2_request *req){
+    unsigned char raw_response[16];
+    mongrel2_ws_handshake_response(req,raw_response);
+    fprintf(stdout,"Response: %s\n",raw_response);
+    // TODO: I assume this copies the content over!
+    return blk2bstr(raw_response,16);
 }
 
 int mongrel2_ws_handshake_response(mongrel2_request *req, unsigned char response[16]){
@@ -148,7 +154,13 @@ int test(int argc, char **args){
     /**
      * Example from page 8 of the web socket protocol RFC : http://www.whatwg.org/specs/web-socket-protocol/
      */
-    char *headers = "{\"PATH\":\"/dds_stream\",\"host\":\"localhost:6767\",\"sec-websocket-key1\":\"18x 6]8vM;54 *(5:  {   U1]8  z [  8\",\"origin\":\"http://localhost:6767\",\"x-forwarded-for\":\"::1\",\"upgrade\":\"WebSocket\",\"connection\":\"Upgrade\",\"sec-websocket-key2\":\"1_ tx7X d  <  nw  334J702) 7]o}` 0\",\"METHOD\":\"GET\",\"VERSION\":\"HTTP/1.1\",\"URI\":\"/dds_stream\",\"PATTERN\":\"/dds_stream\"}";
+    char *headers = "{\"PATH\":\"/dds_stream\",\"host\":\"localhost:6767\","
+                    "\"sec-websocket-key1\":\"18x 6]8vM;54 *(5:  {   U1]8  z [  8\","
+                    "\"origin\":\"http://localhost:6767\",\"x-forwarded-for\":\"::1\","
+                    "\"upgrade\":\"WebSocket\",\"connection\":\"Upgrade\","
+                    "\"sec-websocket-key2\":\"1_ tx7X d  <  nw  334J702) 7]o}` 0\","
+                    "\"METHOD\":\"GET\",\"VERSION\":\"HTTP/1.1\",\"URI\":\"/dds_stream\","
+                    "\"PATTERN\":\"/dds_stream\"}";
     char *body = "Tm[K T2u";
     mongrel2_request *req = calloc(1,sizeof(mongrel2_request));
     req->headers = bfromcstr(headers);

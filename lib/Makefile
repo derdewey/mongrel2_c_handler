@@ -17,8 +17,8 @@ m2handler.o : m2handler.h m2handler.c
 m2websocket.o : m2websocket.h m2websocket.c
 	$(CC) $(CFLAGS) -c -o m2websocket.o m2websocket.c -I/opt/local/include
 
-md5.o : md5.h md5.c
-	$(CC) $(CFLAGS) -c -o md5.o md5.c
+md5.o : md5/md5.h md5/md5.c md5/config.h
+	$(CC) $(CFLAGS) -c -o md5.o md5/md5.c
 
 bstrlib.o : bstr/bstrlib.c bstr/bstrlib.h
 	$(CC) $(CFLAGS) -c -o bstrlib.o bstr/bstrlib.c
