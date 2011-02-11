@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8" />
+  <title>ViaSat Swarm Defender</title>
+
+  <script type="text/javascript">
+    if("WebSocket" in window){
+      ws = new WebSocket("ws://localhost:6767/ws_handler");
+      ws.onopen = function(){
+        alert("OPENED!");
+      };
+      ws.onerror = function(){
+        alert("OH SHIT");
+      }
+    }
+  </script>
+  </head>
+
+  <body id="index" class="home">
+  </body>
+</html>
