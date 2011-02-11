@@ -64,6 +64,42 @@ bstring mongrel2_ws_upgrade_body(mongrel2_request *req){
     return blk2bstr(raw_response,16);
 }
 
+void mongrel2_ws_debug(bstring data){
+    char* buf = calloc(4,sizeof(char));
+    if(buf == NULL){
+        fprintf(stderr, "debug could not allocate a conversion buffer");
+        exit(EXIT_FAILURE);
+    }
+    
+    bstring hex_dump = bfromcstr("");
+    bstring single_hex;
+    for(int i=0; i<blength(data); i++){
+        snprintf(buf,4,"%02X ",(bdata(data)[i]));
+        single_hex = bfromcstr(buf);
+        bconcat(hex_dump,single_hex);
+        bdestroy(single_hex);
+    }
+    fprintf(stdout, "########################\n");
+    fprintf(stdout, "debugger sez: %.*s\n", blength(hex_dump), bdata(hex_dump));
+    fprintf(stdout, "########################\n");
+
+    free(buf);
+}
+
+#define START_CHAR 0x00
+#define TERM_CHAR 0xFF
+
+int mongrel2_ws_reply(mongrel2_socket *pub_socket, mongrel2_request *req, bstring data){
+    bstring payload = bstrcpy(data);
+
+    bInsertChrs(payload, blength(payload), 1, TERM_CHAR, '!');
+    bInsertChrs(payload, 0, 1, START_CHAR, '#');
+    mongrel2_reply(pub_socket,req,payload);
+    mongrel2_ws_debug(payload);
+    bdestroy(payload);
+    return 0;
+}
+
 int mongrel2_ws_handshake_response(mongrel2_request *req, unsigned char response[16]){
     // const char* headers = bdata(req->raw_headers);
     bstring bseckey1 = mongrel2_request_get_header(req,"sec-websocket-key1");

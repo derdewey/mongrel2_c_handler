@@ -31,7 +31,6 @@ int main(int argc, char **args){
     pub_socket = mongrel2_pub_socket(ctx);
     mongrel2_connect(pub_socket, bdata(pub_addr));
 
-    const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close");
     mongrel2_request *request;
 
     pthread_t conn_thread;
@@ -39,12 +38,6 @@ int main(int argc, char **args){
     while((request = mongrel2_recv(pull_socket))!=NULL){
         pthread_retval = pthread_create(&conn_thread, NULL, conn_handler, (void*)request);
     }
-    bdestroy(request->body);
-    mongrel2_reply_http(pub_socket, request, headers, request->body);
-    mongrel2_disconnect(pub_socket, request);
-    mongrel2_request_finalize(request);
-
-    bdestroy(headers);
 
     bdestroy(pull_addr);
     bdestroy(pub_addr);
@@ -57,13 +50,12 @@ int main(int argc, char **args){
 
 static void *conn_handler(void *arg){
     mongrel2_request *req = (mongrel2_request*)arg;
-    fprintf(stdout,"\nTHREAD SPAWNED TO HANDLE %d\n",req->conn_id);
-    fprintf(stdout,"\nSending handshake\n");
-    bstring headers = mongrel2_ws_upgrade_headers(req);
-    bstring body = mongrel2_ws_upgrade_body(req);
-    fprintf(stdout,"\nHEADERS: %d:%.*s\nBODY:%.*s\n",blength(headers),blength(headers),bdata(headers),blength(body),bdata(body));
-    mongrel2_reply_http(pub_socket,req,headers,body);
+    fprintf(stdout,"\nTHREAD SPAWNED TO HANDLE %d\nSending handshake\n",req->conn_id);
+    mongrel2_ws_reply_upgrade(req,pub_socket);
+    bstring msg = bfromcstr("{\"msg\" : \"hi\"}");
+    mongrel2_ws_reply(pub_socket,req,msg);
+    bdestroy(msg);
 
-
+    // mongrel2_disconnect(pub_socket,req);
     pthread_exit(NULL);
 }

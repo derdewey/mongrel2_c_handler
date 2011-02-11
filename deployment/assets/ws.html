@@ -6,28 +6,47 @@
 
   <script type="text/javascript" src="js/jquery-1.5.js"></script>
   <script type="text/javascript" >
+    debug = function(msg){
+      $("ul#debug").append("<li>" + msg + "</li>");
+    }
     var start_ws_handshake = function(){
       ws = new WebSocket("ws://localhost:6767/ws_handler");
       ws.onopen = function(){
-        alert("OPENED!");
+        // alert("OPENED!");
       };
       ws.onerror = function(){
         alert("OH SHIT");
       }
+      ws.onmessage = function(data){
+        debug(data.data);
+        // alert("got data" + data);
+      }
+      ws.onclose = function(data){
+        alert("connection closed");
+      }
       return false;
     };
+    var send_data = function(){
+      ws.send("hi");
+      return false;
+    }
     $(document).ready(function(){
-      $("#ws").submit(start_ws_handshake)
+      $("#initiate").submit(start_ws_handshake)
       }
     );
+    $(document).ready(function(){
+      $("#send").submit(send_data);
+    });
   </script>
   </head>
 
   <body id="index" class="home">
-    <form id="ws" action="ws.html">
-      <input type="submit">
-        HIIII
-     </input>
+    <form id="initiate" action="ws.html">
+      <input type="submit">Initiate Connection</input>
     </form>
+    <form id="send" action="ws.html">
+      <input type="submit">Send Data</input>
+    </form>
+    <ul id="debug"></ul>
   </body>
 </html>

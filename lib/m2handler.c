@@ -289,25 +289,48 @@ int mongrel2_send(mongrel2_socket *pub_socket, bstring response){
 
     #ifdef DEBUG
     fprintf(stdout,"=======MONGREL2_SEND==========\n");
-    fprintf(stdout,"''%s''\n",bdata(response));
+    fprintf(stdout,"''%.*s''\n",blength(response),bdata(response));
     fprintf(stdout,"==============================\n");
     #endif
     return 0;
 }
+/**
+ * Convenience method for when you have headers and a body.
+ * @param pub_socket
+ * @param req
+ * @param headers
+ * @param body
+ * @return
+ */
 int mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring headers, const_bstring body){
-    // All the info except headers and body
+    bstring payload = bstrcpy(headers);
+    bconcat(payload, &SEPERATOR);
+    bconcat(payload,body);
+    // mongrel2_send(pub_socket,response);
+    return mongrel2_reply(pub_socket, req, payload);
+}
+/**
+ * The big kahuna. Formats protocol message to mongrel2 and sends along your payload.
+ * Does not take ownership of payload.
+ * @param pub_socket
+ * @param req
+ * @param payload
+ * @return
+ */
+int mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring payload){
     bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
-
-    // Now tack on headers and body
-    bconcat(response,headers);
-    bconcat(response,&SEPERATOR);
-    bconcat(response,body);
-
+    bconcat(response,payload);
     return mongrel2_send(pub_socket,response);
 }
+/**
+ * Convenience method for sending a close request. Essentially a mongrel2_reply with an empty payload.
+ * @param pub_socket
+ * @param req
+ * @return
+ */
 int mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
-    bstring response = bformat(RESPONSE_HEADER,bdata(req->uuid),blength(req->conn_id_bstr),req->conn_id);
-    return mongrel2_send(pub_socket,response);
+    bstring close = bfromcstr("");
+    return mongrel2_reply(pub_socket,req,close);
 }
 
 /**
