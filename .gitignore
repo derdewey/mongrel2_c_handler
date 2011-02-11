@@ -1,3 +1,5 @@
 *.o
 libm2handler*
 lib/nbproject/
+Makefile-handler.mk
+config.sqlite
