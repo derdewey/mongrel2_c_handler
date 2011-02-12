@@ -80,7 +80,7 @@ void mongrel2_ws_debug(bstring data){
         bdestroy(single_hex);
     }
     fprintf(stdout, "########################\n");
-    fprintf(stdout, "debugger sez: %.*s\n", blength(hex_dump), bdata(hex_dump));
+    fprintf(stdout, "DEBUGGER SEZ\n%.*s\n", blength(hex_dump), bdata(hex_dump));
     fprintf(stdout, "########################\n");
 
     free(buf);
@@ -104,20 +104,6 @@ int mongrel2_ws_handshake_response(mongrel2_request *req, unsigned char response
     // const char* headers = bdata(req->raw_headers);
     bstring bseckey1 = mongrel2_request_get_header(req,"sec-websocket-key1");
     bstring bseckey2 = mongrel2_request_get_header(req,"sec-websocket-key2");
-
-/*
-    json_object *seckey2_json = json_object_object_get(json,"sec-websocket-key2");
-    const char* seckey2_raw = json_object_get_string(seckey2_json);
-    uint32_t seckey2;
-    mongrel2_ws_extract_seckey(seckey2_raw,&seckey2);
-    json_object_put(seckey2_json);
-
-    json_object *seckey1_json = json_object_object_get(json,"sec-websocket-key1");
-    const char* seckey1_raw = json_object_get_string(seckey1_json);
-    uint32_t seckey1;
-    mongrel2_ws_extract_seckey(seckey1_raw,&seckey1);
-    json_object_put(seckey1_json);
-*/
 
     // TODO : This guy will be throwing error in the near future.
     // Gotta validate the websocket protocol anyway...

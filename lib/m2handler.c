@@ -150,7 +150,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   mongrel2_request* req = calloc(1, sizeof(mongrel2_request));
   if(req == NULL){
     fprintf(stderr,"Could not allocate mongrel2_request");
-    exit(EXIT_FAILURE);
+    goto error;
   }
 
   bstring bnetstring = bfromcstr(raw_mongrel_request);
@@ -165,7 +165,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   req->uuid = bmidstr(bnetstring, suuid, euuid-suuid);
   if(req->uuid == NULL){
       fprintf(stderr,"Could not extract UUID!");
-      exit(EXIT_FAILURE);
+      goto error;
   }
 
   // Extract the Connection ID
@@ -174,6 +174,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   req->conn_id_bstr = bmidstr(bnetstring,sconnid,econnid-sconnid);
   if(req->conn_id_bstr == NULL){
       fprintf(stderr, "Could not extract connection id");
+      goto error;
   }
   sscanf(bdata(req->conn_id_bstr),"%d",&req->conn_id);
 
@@ -183,7 +184,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   req->path = bmidstr(bnetstring,spath,epath-spath);
   if(req->path == NULL){
       fprintf(stderr, "Could not extract Path");
-      exit(EXIT_FAILURE);
+      goto error;
   }
 
   // Extract the headers
@@ -202,10 +203,10 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   req->raw_headers = bmidstr(bnetstring,sheader,eheader-sheader);
   if(req->raw_headers == NULL){
       fprintf(stderr,"could not extract headers");
-      exit(EXIT_FAILURE);
+      goto error;
   } else if(blength(req->raw_headers) != headerlen){
       fprintf(stderr,"Expected headerlen to be %d, got %d",headerlen,blength(req->raw_headers));
-      exit(EXIT_FAILURE);
+      goto error;
   }
 
   // Extract the body
@@ -224,10 +225,10 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   req->body = bmidstr(bnetstring,sbody,ebody-sbody);
   if(req->body == NULL){
       fprintf(stderr,"could not extract body");
-      exit(EXIT_FAILURE);
+      goto error;
   } else if(blength(req->body) != bodylen){
       fprintf(stderr,"Expected body to be %d, got %d",bodylen,blength(req->body));
-      exit(EXIT_FAILURE);
+      goto error;
   }
 
   #ifdef DEBUG
@@ -240,10 +241,16 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
   fprintf(stdout,"================================\n");
   #endif
 
+  // TODO: error situations here?
   req->headers = json_tokener_parse(bdata(req->raw_headers));
 
   bdestroy(bnetstring);
   return req;
+
+  error:
+  bdestroy(bnetstring);
+  mongrel2_request_finalize(req);
+  return NULL;
 }
 
 /**
@@ -258,7 +265,7 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
     zmq_msg_init(msg);
     zmq_recv(pull_socket->zmq_socket,msg,0);
     char* raw_request = (char*) zmq_msg_data(msg);
-
+    
     mongrel2_request* req = mongrel2_parse_request(raw_request);
 
     zmq_msg_close(msg);
