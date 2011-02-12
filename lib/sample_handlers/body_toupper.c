@@ -29,13 +29,8 @@ int main(int argc, char **args){
     const bstring headers = bfromcstr("HTTP/1.1 200 OK\r\nDate: Fri, 07 Jan 2011 01:15:42 GMT\r\nStatus: 200 OK\r\nConnection: close");
     mongrel2_request *request;
 
-
-
     while(1){
-        request = mongrel2_recv(pull_socket);
-
-        //print_json_keys(request->headers);
-
+        request = mongrel2_recv(pull_socket, NULL);
         btoupper(request->body);
         mongrel2_reply_http(pub_socket, request, headers, request->body);
         mongrel2_disconnect(pub_socket, request);

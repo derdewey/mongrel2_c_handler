@@ -76,7 +76,7 @@ int main(int argc, char **args){
     }
 
     size_t read_size;
-    request = mongrel2_recv(pull_socket);
+    request = mongrel2_recv(pull_socket, NULL);
     // A 1k buffer
     void* fifo_buffer = calloc(1024,1);
     //while(1){

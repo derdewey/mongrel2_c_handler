@@ -57,7 +57,7 @@ int main(int argc, char **args){
     while(shutdown != 1){
         poll_response = zmq_poll(&socket_tracker,1,500*1000);
         if(poll_response > 0){
-            request = mongrel2_recv(pull_socket);
+            request = mongrel2_recv(pull_socket,pub_socket);
             if(request == NULL){
                 fprintf(stderr, "mongrel2_recv failed... no biggie\n");
             } else {
@@ -84,9 +84,8 @@ static void *conn_handler(void *arg){
     mongrel2_ws_reply_upgrade(req,pub_socket);
     bstring msg = bformat("{\"msg\" : \"hi there %d\"}", req->conn_id);
     mongrel2_ws_reply(pub_socket,req,msg);
-    mongrel2_ws_reply(pub_socket,req,msg);
     bdestroy(msg);
 
-    // mongrel2_disconnect(pub_socket,req);
+    mongrel2_disconnect(pub_socket,req);
     pthread_exit(NULL);
 }

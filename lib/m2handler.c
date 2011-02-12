@@ -140,7 +140,7 @@ int mongrel2_connect(mongrel2_socket* socket, const char* dest){
  * @param netstring
  * @return
  */
-mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
+mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongrel2_socket *pub){
   #ifdef DEBUG
   fprintf(stdout, "======NETSTRING======\n");
   fprintf(stdout, "%s\n",raw_mongrel_request);
@@ -249,6 +249,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
 
   error:
   bdestroy(bnetstring);
+  mongrel2_disconnect(pub,req);
   mongrel2_request_finalize(req);
   return NULL;
 }
@@ -258,15 +259,15 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request){
  * A lot of 'syscall param socketcall.send(msg) point to unitialized byte(s)'
  * throughout my code. TBD!
  * @param pull_socket
- * @return
+ * @return 0 on success, -1 on failure. If failure, disconnect host and finalize.
  */
-mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
+mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket, mongrel2_socket *pub){
     zmq_msg_t *msg = calloc(1,sizeof(zmq_msg_t));
     zmq_msg_init(msg);
     zmq_recv(pull_socket->zmq_socket,msg,0);
     char* raw_request = (char*) zmq_msg_data(msg);
     
-    mongrel2_request* req = mongrel2_parse_request(raw_request);
+    mongrel2_request *req = mongrel2_parse_request(raw_request,pub);
 
     zmq_msg_close(msg);
     free(msg);
@@ -336,6 +337,13 @@ int mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, const_bst
  * @return
  */
 int mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
+    if(req == NULL){
+        fprintf(stderr,"mongrel2_disconnect called with NULL pub_socket");
+        return -1;
+    } else if (pub_socket == NULL){
+        fprintf(stderr,"mongrel2_disconnect called with NULL request");
+        return -1;
+    }
     bstring close = bfromcstr("");
     return mongrel2_reply(pub_socket,req,close);
 }
