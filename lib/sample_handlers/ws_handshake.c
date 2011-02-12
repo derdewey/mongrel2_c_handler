@@ -57,18 +57,16 @@ int main(int argc, char **args){
     while(shutdown != 1){
         poll_response = zmq_poll(&socket_tracker,1,500*1000);
         if(poll_response > 0){
-            request = mongrel2_recv(pull_socket,pub_socket);
-            if(request == NULL){
-                fprintf(stderr, "mongrel2_recv failed... no biggie\n");
-            } else {
-                pthread_retval = pthread_create(&conn_thread, NULL, conn_handler, (void*)request);
-            }
+            request = mongrel2_recv(pull_socket);
+            if(request != NULL)
+            pthread_retval = pthread_create(&conn_thread, NULL, conn_handler, (void*)request);
         } else if (poll_response < 0){
             fprintf(stdout, "Error on poll!");
+            shutdown = 1;
         }
     }
     
-    fprintf(stdout,"Shutting down");
+    fprintf(stdout,"\nClean shutdown done! Thanks for playing!\n");
     bdestroy(pull_addr);
     bdestroy(pub_addr);
 
@@ -86,6 +84,6 @@ static void *conn_handler(void *arg){
     mongrel2_ws_reply(pub_socket,req,msg);
     bdestroy(msg);
 
-    mongrel2_disconnect(pub_socket,req);
+    //mongrel2_disconnect(pub_socket,req);
     pthread_exit(NULL);
 }

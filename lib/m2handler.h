@@ -47,8 +47,8 @@ mongrel2_socket* mongrel2_pull_socket(mongrel2_ctx *ctx, char* identity);
 mongrel2_socket* mongrel2_pub_socket(mongrel2_ctx *ctx);
 int mongrel2_close(mongrel2_socket *socket);
 
-mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket, mongrel2_socket *pub);
-mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongrel2_socket *pub);
+mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket);
+mongrel2_request *mongrel2_parse_request(bstring raw_mongrel_request);
 
 int mongrel2_send(mongrel2_socket *pub_socket, bstring response);
 int mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring payload);

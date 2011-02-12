@@ -140,10 +140,10 @@ int mongrel2_connect(mongrel2_socket* socket, const char* dest){
  * @param netstring
  * @return
  */
-mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongrel2_socket *pub){
+mongrel2_request *mongrel2_parse_request(bstring raw_request_bstr){
   #ifdef DEBUG
   fprintf(stdout, "======NETSTRING======\n");
-  fprintf(stdout, "%s\n",raw_mongrel_request);
+  fprintf(stdout, "%.*s\n",blength(raw_request_bstr),bdata(raw_request_bstr));
   fprintf(stdout, "=====================\n");
   #endif
 
@@ -153,7 +153,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
     goto error;
   }
 
-  bstring bnetstring = bfromcstr(raw_mongrel_request);
+  // bfromcstr(raw_mongrel_request);
   int suuid = 0, euuid;
   int sconnid, econnid;
   int spath, epath;
@@ -161,8 +161,8 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
   int sbody, ebody;
 
   // Extract the UUID
-  euuid = binchr(bnetstring, suuid, &SPACE);
-  req->uuid = bmidstr(bnetstring, suuid, euuid-suuid);
+  euuid = binchr(raw_request_bstr, suuid, &SPACE);
+  req->uuid = bmidstr(raw_request_bstr, suuid, euuid-suuid);
   if(req->uuid == NULL){
       fprintf(stderr,"Could not extract UUID!");
       goto error;
@@ -170,8 +170,8 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
 
   // Extract the Connection ID
   sconnid = euuid+1; // Skip over the space delimiter
-  econnid = binchr(bnetstring, sconnid, &SPACE);
-  req->conn_id_bstr = bmidstr(bnetstring,sconnid,econnid-sconnid);
+  econnid = binchr(raw_request_bstr, sconnid, &SPACE);
+  req->conn_id_bstr = bmidstr(raw_request_bstr,sconnid,econnid-sconnid);
   if(req->conn_id_bstr == NULL){
       fprintf(stderr, "Could not extract connection id");
       goto error;
@@ -180,8 +180,8 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
 
   // Extract the Path
   spath = econnid+1; // Skip over the space delimiter
-  epath = binchr(bnetstring, spath, &SPACE);
-  req->path = bmidstr(bnetstring,spath,epath-spath);
+  epath = binchr(raw_request_bstr, spath, &SPACE);
+  req->path = bmidstr(raw_request_bstr,spath,epath-spath);
   if(req->path == NULL){
       fprintf(stderr, "Could not extract Path");
       goto error;
@@ -191,8 +191,8 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
   // First we grab the length value as an int
   bstring tempheaderlenbstr;
   sheader = epath+1; // Skip over the space delimiter
-  eheader = binchr(bnetstring, sheader, &COLON);
-  tempheaderlenbstr = bmidstr(bnetstring,sheader,eheader-sheader);
+  eheader = binchr(raw_request_bstr, sheader, &COLON);
+  tempheaderlenbstr = bmidstr(raw_request_bstr,sheader,eheader-sheader);
   int headerlen;
   sscanf(bdata(tempheaderlenbstr),"%d",&headerlen);
   bdestroy(tempheaderlenbstr);
@@ -200,7 +200,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
   // Now that we know the header length we can actually extract it
   sheader = eheader+1; // Skip over the number and the colon
   eheader = sheader+headerlen;
-  req->raw_headers = bmidstr(bnetstring,sheader,eheader-sheader);
+  req->raw_headers = bmidstr(raw_request_bstr,sheader,eheader-sheader);
   if(req->raw_headers == NULL){
       fprintf(stderr,"could not extract headers");
       goto error;
@@ -213,8 +213,8 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
   // First we grab the length value as an int
   bstring tempbodylenbstr;
   sbody = eheader+1; // Skip over the comma
-  ebody = binchr(bnetstring,sbody,&COLON);
-  tempbodylenbstr = bmidstr(bnetstring,sbody,ebody-sbody);
+  ebody = binchr(raw_request_bstr,sbody,&COLON);
+  tempbodylenbstr = bmidstr(raw_request_bstr,sbody,ebody-sbody);
   int bodylen;
   sscanf(bdata(tempbodylenbstr),"%d",&bodylen);
   bdestroy(tempbodylenbstr);
@@ -222,7 +222,7 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
   // Nowe we have the body len we can extract the payload
   sbody = ebody+1; // Skip over the number and the colon
   ebody = sbody+bodylen;
-  req->body = bmidstr(bnetstring,sbody,ebody-sbody);
+  req->body = bmidstr(raw_request_bstr,sbody,ebody-sbody);
   if(req->body == NULL){
       fprintf(stderr,"could not extract body");
       goto error;
@@ -244,12 +244,11 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
   // TODO: error situations here?
   req->headers = json_tokener_parse(bdata(req->raw_headers));
 
-  bdestroy(bnetstring);
+  bdestroy(raw_request_bstr);
   return req;
 
   error:
-  bdestroy(bnetstring);
-  mongrel2_disconnect(pub,req);
+  bdestroy(raw_request_bstr);
   mongrel2_request_finalize(req);
   return NULL;
 }
@@ -261,13 +260,13 @@ mongrel2_request *mongrel2_parse_request(const char* raw_mongrel_request, mongre
  * @param pull_socket
  * @return 0 on success, -1 on failure. If failure, disconnect host and finalize.
  */
-mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket, mongrel2_socket *pub){
+mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
     zmq_msg_t *msg = calloc(1,sizeof(zmq_msg_t));
     zmq_msg_init(msg);
     zmq_recv(pull_socket->zmq_socket,msg,0);
-    char* raw_request = (char*) zmq_msg_data(msg);
     
-    mongrel2_request *req = mongrel2_parse_request(raw_request,pub);
+    bstring raw_request_bstr = blk2bstr(zmq_msg_data(msg),zmq_msg_size(msg));
+    mongrel2_request *req = mongrel2_parse_request(raw_request_bstr);
 
     zmq_msg_close(msg);
     free(msg);
