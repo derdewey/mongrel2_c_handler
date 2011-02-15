@@ -76,12 +76,12 @@ int main(int argc, char **args){
     }
 
     size_t read_size;
-    request = mongrel2_recv(pull_socket, NULL);
+    request = mongrel2_recv(pull_socket);
     // A 1k buffer
     void* fifo_buffer = calloc(1024,1);
     //while(1){
         read_size = fread(fifo_buffer, 1024, 1, fifofd);
-        fprintf(stdout,"read_size from fifo: %d", read_size);
+        fprintf(stdout,"read_size from fifo: %zd", read_size); // z is for size_t's... weird!
         bdestroy(request->body);
         request->body = bfromcstralloc(1024,(const char*)fifo_buffer);
         mongrel2_reply_http(pub_socket, request, headers, request->body);

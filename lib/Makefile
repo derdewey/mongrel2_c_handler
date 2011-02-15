@@ -2,9 +2,9 @@ OPTCFLAGS=-I/opt/local/include
 OPTLFLAGS=-L/opt/local/lib
 LOCAL_MONGREL2_LIB=-L. -lm2handler
 
-CFLAGS=-g -std=c99 -Wall -Werror
-LFLAGS=-L/opt/local/lib
-LIBS=-lzmq -ljson $(OPTLIBS)
+CFLAGS=-g -std=c99 -Wall -Werror $(OPTCFLAGS)
+LFLAGS=-L/opt/local/lib $(OPTLFLAGS)
+LIBS=-lzmq -ljson
 PREFIX?=/usr/local
 
 SOURCES=m2handler.c bstr/bstrlib.c bstrlib.c
@@ -36,19 +36,19 @@ body_toupper.o : sample_handlers/body_toupper.c
 	$(CC) $(CFLAGS) -I. -c sample_handlers/body_toupper.c -o body_toupper.o
 
 body_toupper_handler: lib body_toupper.o bstrlib.o bstraux.o
-	$(CC) $(CFLAGS) $(LIBS) -I. bstrlib.o bstraux.o body_toupper.o -o body_toupper_handler $(LOCAL_MONGREL2_LIB)
+	$(CC) $(LFLAGS) $(LIBS) -I. bstrlib.o bstraux.o body_toupper.o -o body_toupper_handler $(LOCAL_MONGREL2_LIB)
 
 fifo_reader.o : sample_handlers/fifo_reader.c
 	$(CC) $(CFLAGS) -I. -c sample_handlers/fifo_reader.c -o fifo_reader.o
 
 fifo_reader_handler: lib fifo_reader.o bstrlib.o bstraux.o
-	$(CC) $(CFLAGS) $(LIBS) -I. bstrlib.o bstraux.o fifo_reader.o -o fifo_reader_handler $(LOCAL_MONGREL2_LIB)
+	$(CC) $(LFLAGS) $(LIBS) -I. bstrlib.o bstraux.o fifo_reader.o -o fifo_reader_handler $(LOCAL_MONGREL2_LIB)
 
 ws_handshake.o : sample_handlers/ws_handshake.c
 	$(CC) $(CFLAGS) -I. -c sample_handlers/ws_handshake.c -o ws_handshake.o
 
 ws_handshake_handler : lib ws_handshake.o bstrlib.o bstraux.o m2handler.o m2websocket.o
-	$(CC) $(CFLAGS) $(LIBS) -I. bstrlib.o bstraux.o ws_handshake.o -o ws_handshake_hander $(LOCAL_MONGREL2_LIB)
+	$(CC) $(LFLAGS) $(LIBS) -I. bstrlib.o bstraux.o ws_handshake.o -o ws_handshake_hander $(LOCAL_MONGREL2_LIB)
 
 install: lib
 	install --owner=root libm2handler.a $(PREFIX)/lib

@@ -30,7 +30,7 @@ int main(int argc, char **args){
     mongrel2_request *request;
 
     while(1){
-        request = mongrel2_recv(pull_socket, NULL);
+        request = mongrel2_recv(pull_socket);
         btoupper(request->body);
         mongrel2_reply_http(pub_socket, request, headers, request->body);
         mongrel2_disconnect(pub_socket, request);
