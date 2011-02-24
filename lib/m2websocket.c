@@ -11,6 +11,9 @@
 #include "m2websocket.h"
 #include "md5/md5.h"
 
+#define START_CHAR 0x00
+#define TERM_CHAR 0xFF
+
 static uint32_t mongrel2_ws_concat_numbers(const char *incoming);
 static uint32_t mongrel2_ws_count_spaces(const char *incoming);
 static int mongrel2_ws_extract_seckey(const char* seckey_str, uint32_t *seckey);
@@ -72,26 +75,44 @@ void mongrel2_ws_debug(bstring data){
     }
     
     bstring hex_dump = bfromcstr("");
+    bstring san_dump = bfromcstr("");
     bstring single_hex;
+    bstring single_char;
+
+    char* raw_char;
+    char* cstr = bdata(data);
+
     for(int i=0; i<blength(data); i++){
-        snprintf(buf,4,"%02X ",(bdata(data)[i]));
+        snprintf(buf,4,"%02X ",cstr[i]);
         single_hex = bfromcstr(buf);
         bconcat(hex_dump,single_hex);
         bdestroy(single_hex);
+
+        raw_char = &cstr[i];
+        if(*raw_char == START_CHAR){
+            buf[0] = '@';
+        } else if(*raw_char == TERM_CHAR){
+            buf[0] = '@';
+        } else {
+            buf[0] = *raw_char;
+        }
+        buf[1] = '\0';
+        single_char = bfromcstr(buf);
+        bconcat(san_dump,single_char);
+        bdestroy(single_char);
     }
     fprintf(stdout, "########################\n");
+    fprintf(stdout, "SANITIZED DATA\n%.*s\n",blength(san_dump), bdata(san_dump));
     fprintf(stdout, "DEBUGGER SEZ\n%.*s\n", blength(hex_dump), bdata(hex_dump));
     fprintf(stdout, "########################\n");
 
     free(buf);
 }
 
-#define START_CHAR 0x00
-#define TERM_CHAR 0xFF
-
 int mongrel2_ws_reply(mongrel2_socket *pub_socket, mongrel2_request *req, bstring data){
     bstring payload = bstrcpy(data);
 
+    // ! and # are teh fill characters. You should not see these if the data is correct
     bInsertChrs(payload, blength(payload), 1, TERM_CHAR, '!');
     bInsertChrs(payload, 0, 1, START_CHAR, '#');
     mongrel2_reply(pub_socket,req,payload);

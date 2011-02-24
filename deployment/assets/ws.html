@@ -9,44 +9,63 @@
     debug = function(msg){
       $("ul#debug").append("<li>" + msg + "</li>");
     }
-    var start_ws_handshake = function(){
+    var send_data = function(){
+      ws.send("hi");
+      return false;
+    };
+    $(document).ready(function(){
+      $("#open").click(ws_open);
+      $("#close").click(ws_close);
+      $("#send").click(ws_send);
+      }
+    );
+  </script>
+  <script type="text/javascript">
+    var ws_open = function(){
       ws = new WebSocket("ws://localhost:6767/ws_handler");
       ws.onopen = function(){
-        // alert("OPENED!");
+        $("td#status").html("connected");
       };
       ws.onerror = function(){
-        // alert("OH GOLLY");
+        alert("whaaa")
       }
       ws.onmessage = function(data){
         debug(data.data);
         // alert("got data" + data);
       }
       ws.onclose = function(data){
-        // debug("CONNECTION CLOSED")
+        $("td#status").html("disconnected")
       }
       return false;
     };
-    var send_data = function(){
-      ws.send("hi");
-      return false;
+  </script>
+  <script type="text/javascript">
+    var ws_close = function(){
+      ws.close();
     }
-    $(document).ready(function(){
-      $("#initiate").submit(start_ws_handshake)
-      }
-    );
-    $(document).ready(function(){
-      $("#send").submit(send_data);
-    });
+  </script>
+  <script type="text/javascript">
+    var ws_send = function(){
+      ws.send("blah");
+    }
   </script>
   </head>
 
   <body id="index" class="home">
-    <form id="initiate" action="ws.html">
-      <input type="submit">Initiate Connection</input>
-    </form>
-    <form id="send" action="ws.html">
-      <input type="submit">Send Data</input>
-    </form>
-    <ul id="debug"></ul>
+    <h1>Interactive WebSocket Demo</h1>
+    <table>
+      <tr>
+        <td>Status</td>
+        <td id="status">disconnected</td>
+      </tr>
+    </table>
+
+    <input type="submit" id="open" value="Open Connection" style="display: block"/>
+    <input type="submit" id="close" value="Close Connection" style="display: block"/>
+    <input type="submit" id="send" value="Send Data (disabled)" style="display: block"/>
+
+    <h2>Debugging Messages</h2>
+    <ul id="debug">
+    </ul>
   </body>
 </html>

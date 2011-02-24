@@ -12,6 +12,7 @@
 #include<stdlib.h>
 #include<string.h>
 #include<zmq.h>
+#include<jansson.h>
 #include "m2handler.h"
 #include "bstr/bstrlib.h"
 #include "bstr/bstraux.h"
@@ -241,7 +242,11 @@ mongrel2_request *mongrel2_parse_request(bstring raw_request_bstr){
   #endif
 
   // TODO: error situations here?
-  req->headers = json_string(bdata(req->raw_headers));
+  json_error_t header_err;
+  req->headers = json_loads(bdata(req->raw_headers),0,&header_err);// json_string(bdata(req->raw_headers));
+  if(req->headers == NULL){
+      fprintf(stderr,"Problem parsing the inputs near position: %d, line: %d, col: %d",header_err.position,header_err.line,header_err.position);
+  }
   if(json_typeof(req->headers) != JSON_OBJECT){
     fprintf(stderr, "Headers did not turn into an object... ruh roh!");
   }
@@ -338,9 +343,9 @@ int mongrel2_request_for_disconnect(mongrel2_request *req){
     json_t *method_obj = NULL;
     const char *method_str  = NULL;
 
-    fprintf(stdout,"ABOUT TO CRASH");
     const char* body_str = bdata(req->body);
-    json_body = json_string(body_str);
+    json_error_t jerr;
+    json_body = json_loads(body_str,0,&jerr);
     if(json_body == NULL || !json_is_object(json_body)){
         json_decref(json_body);
         bdestroy(header);
