@@ -1,5 +1,5 @@
-Mongrel2 C Handler: libm2handler
---------------------------------
+# Mongrel2 C Handler: libm2handler
+
 
 A C library for handling requests from Mongrel2. Includes a suite of sample handlers to get you up and running.
 
@@ -9,11 +9,9 @@ A C library for handling requests from Mongrel2. Includes a suite of sample hand
 http://www.mongrel2.org/
 Installed and configured to your liking. If you are trying out the sample handlers use ./config.sh in the deployment folder.
 
-#### libjson0 / libjson0-dev ####
-http://oss.metaparadigm.com/json-c/
-
-### Large messages ###
-I think you'll have to use ZMQ's getsockopt to see if there are more messages related to what you're processing. Large requests will be split up into multiple messages. No support for that just yet.
+#### libjansson ####
+http://www.digip.org/jansson/
+https://github.com/akheron/jansson
 
 ### Valgrind ###
 
@@ -45,10 +43,6 @@ Now we'll use four sessions
 (3) curl http://localhost:6767/
 (4) cd handler && cat Makefile > handler_pipe
 You will see the Makefile in the curl session.
-
-### bstring ###
-
-I wasn't sure how to put bstrings into the library and still keep the header files seperate, etc. So for now, copy the header files from in here into your own project and make sure they can be found. The object files will be satisfied by libm2hander.a.
 
 ### Contact ###
 Feel free to send me through github. Patches are welcome (and how!)! I'm also on mongrel2@librelist.com.
