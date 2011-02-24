@@ -15,14 +15,14 @@
         // alert("OPENED!");
       };
       ws.onerror = function(){
-        alert("OH GOLLY");
+        // alert("OH GOLLY");
       }
       ws.onmessage = function(data){
         debug(data.data);
         // alert("got data" + data);
       }
       ws.onclose = function(data){
-        debug("CONNECTION CLOSED")
+        // debug("CONNECTION CLOSED")
       }
       return false;
     };

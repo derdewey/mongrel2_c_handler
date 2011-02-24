@@ -53,6 +53,8 @@ mongrel2_request *mongrel2_parse_request(bstring raw_mongrel_request);
 int mongrel2_send(mongrel2_socket *pub_socket, bstring response);
 int mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring payload);
 int mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, const_bstring headers, const_bstring body);
+
+int mongrel2_request_for_disconnect(mongrel2_request *req);
 int mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req);
 
 bstring mongrel2_request_get_header(mongrel2_request *req, char* key);

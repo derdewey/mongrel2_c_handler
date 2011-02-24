@@ -16,6 +16,8 @@
 #include "bstr/bstrlib.h"
 #include "bstr/bstraux.h"
 #include<json/json.h>
+#include <strings.h>
+#include <json/json_object.h>
 
 #define DEBUG
 
@@ -23,6 +25,8 @@ static const struct tagbstring SPACE = bsStatic(" ");
 static const struct tagbstring COLON = bsStatic(":");
 static const struct tagbstring COMMA = bsStatic(",");
 static const struct tagbstring SEPERATOR = bsStatic("\r\n\r\n");
+static const struct tagbstring JSON = bsStatic("JSON");
+static const struct tagbstring DISCONNECT = bsStatic("disconnect");
 static const char *RESPONSE_HEADER = "%s %d:%d, ";
 
 static void zmq_bstr_free(void *data, void *bstr){
@@ -329,6 +333,49 @@ int mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, const_bst
     bconcat(response,payload);
     return mongrel2_send(pub_socket,response);
 }
+
+int mongrel2_request_for_disconnect(mongrel2_request *req){
+    bstring header = NULL;
+    json_object *json_body  = NULL;
+    json_object *method_obj = NULL;
+    const char *method_str  = NULL;
+
+        fprintf(stdout,"ABOUT TO CRASH");
+    const char* body_str = bdata(req->body);
+    json_body = json_tokener_parse(body_str);
+    if(json_body == NULL || json_object_is_type(json_body,json_type_object)){
+        json_object_put(json_body);
+        bdestroy(header);
+        return 0;
+    }
+
+    if(json_object_is_type(json_body,json_type_object)){
+        fprintf(stdout, "This is an object");
+    } else {
+        fprintf(stdout, "This is NOT an object!");
+    }
+
+    method_obj = json_object_object_get(json_body,"type");
+    method_str = json_object_get_string(method_obj);
+    bstring method_bstr = bfromcstr(method_str);
+    json_object_put(method_obj);
+    json_object_put(json_body);
+    
+    if(method_obj == NULL || bstrcmp(method_bstr,&DISCONNECT) != 0){
+        bdestroy(method_bstr);
+        json_object_put(method_obj);
+        json_object_put(json_body);
+        bdestroy(header);
+        return 0;
+    }
+    bdestroy(method_bstr);
+
+    json_object_put(method_obj);
+    json_object_put(json_body);
+    bdestroy(header);
+    return 1;
+}
+
 /**
  * Convenience method for sending a close request. Essentially a mongrel2_reply with an empty payload.
  * @param pub_socket

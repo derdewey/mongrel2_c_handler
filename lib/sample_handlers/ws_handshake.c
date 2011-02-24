@@ -21,7 +21,7 @@ static void *conn_handler(void *nothing);
 static mongrel2_socket *pub_socket;
 static int shutdown = 0;
 
-void call_for_stop(int sig_id){
+static void call_for_stop(int sig_id){
     if(sig_id == SIGINT){
         if(shutdown == 1){
             fprintf(stderr, "SHUTDOWN CALLED... ASSUMING MURDER!");
@@ -58,21 +58,24 @@ int main(int argc, char **args){
         poll_response = zmq_poll(&socket_tracker,1,500*1000);
         if(poll_response > 0){
             request = mongrel2_recv(pull_socket);
-            if(request != NULL)
-            pthread_retval = pthread_create(&conn_thread, NULL, conn_handler, (void*)request);
+            if(request != NULL && mongrel2_request_for_disconnect(request) != 1){
+                pthread_retval = pthread_create(&conn_thread, NULL, conn_handler, (void*)request);
+            } else {
+                fprintf(stdout,"Connection %d disconnected\n", request->conn_id);
+            }
         } else if (poll_response < 0){
             fprintf(stdout, "Error on poll!");
             shutdown = 1;
         }
     }
     
-    fprintf(stdout,"\nClean shutdown done! Thanks for playing!\n");
     bdestroy(pull_addr);
     bdestroy(pub_addr);
 
     mongrel2_close(pull_socket);
     mongrel2_close(pub_socket);
     mongrel2_deinit(ctx);
+    fprintf(stdout,"\nClean shutdown done! Thanks for playing!\n");
     return 0;
 }
 

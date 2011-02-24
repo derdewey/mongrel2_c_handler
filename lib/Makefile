@@ -53,6 +53,7 @@ ws_handshake_handler : lib ws_handshake.o bstrlib.o bstraux.o m2handler.o m2webs
 install: lib
 	install --owner=root libm2handler.a $(PREFIX)/lib
 	install --owner=root m2handler.h $(PREFIX)/include
+	install --owner=root m2websocket.h $(PREFIX)/include
 	install -d --owner=root $(PREFIX)/include/bstr/
 	install --owner=root bstr/bstrlib.h $(PREFIX)/include/bstr/
 	install --owner=root bstr/bstraux.h $(PREFIX)/include/bstr/
