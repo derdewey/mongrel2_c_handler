@@ -14,7 +14,7 @@
 #define MONGREL_HANDLER_H
 
 #include<zmq.h>
-#include<json/json.h>
+#include<jansson.h>
 #include "bstr/bstrlib.h"
 #include "bstr/bstraux.h"
 
@@ -34,7 +34,7 @@ struct mongrel2_request_t{
     bstring conn_id_bstr;
     bstring path;
     bstring raw_headers;
-    json_object *headers;
+    json_t *headers;
     bstring body;
 };
 typedef struct mongrel2_request_t mongrel2_request;

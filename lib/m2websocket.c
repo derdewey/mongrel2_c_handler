@@ -104,6 +104,12 @@ int mongrel2_ws_handshake_response(mongrel2_request *req, unsigned char response
     // const char* headers = bdata(req->raw_headers);
     bstring bseckey1 = mongrel2_request_get_header(req,"sec-websocket-key1");
     bstring bseckey2 = mongrel2_request_get_header(req,"sec-websocket-key2");
+    if(bseckey1 == NULL || bseckey2 == NULL){
+        fprintf(stderr,"sec-websocket-key1 or 2 were not present");
+        bdestroy(bseckey1);
+        bdestroy(bseckey2);
+        return -1;
+    }
 
     // TODO : This guy will be throwing error in the near future.
     // Gotta validate the websocket protocol anyway...

@@ -15,9 +15,7 @@
 #include "m2handler.h"
 #include "bstr/bstrlib.h"
 #include "bstr/bstraux.h"
-#include<json/json.h>
 #include <strings.h>
-#include <json/json_object.h>
 
 #define DEBUG
 
@@ -138,9 +136,6 @@ int mongrel2_connect(mongrel2_socket* socket, const char* dest){
  *
  * Will only work for small requests, although structure is generous. Beware!
  *
- * TODO: Add some code for parsing the JSON object for headers
- * http://joysofprogramming.com/json_parser_json-c/ is a good example
- *
  * @param netstring
  * @return
  */
@@ -246,7 +241,10 @@ mongrel2_request *mongrel2_parse_request(bstring raw_request_bstr){
   #endif
 
   // TODO: error situations here?
-  req->headers = json_tokener_parse(bdata(req->raw_headers));
+  req->headers = json_string(bdata(req->raw_headers));
+  if(json_typeof(req->headers) != JSON_OBJECT){
+    fprintf(stderr, "Headers did not turn into an object... ruh roh!");
+  }
 
   bdestroy(raw_request_bstr);
   return req;
@@ -336,42 +334,42 @@ int mongrel2_reply(mongrel2_socket *pub_socket, mongrel2_request *req, const_bst
 
 int mongrel2_request_for_disconnect(mongrel2_request *req){
     bstring header = NULL;
-    json_object *json_body  = NULL;
-    json_object *method_obj = NULL;
+    json_t *json_body  = NULL;
+    json_t *method_obj = NULL;
     const char *method_str  = NULL;
 
-        fprintf(stdout,"ABOUT TO CRASH");
+    fprintf(stdout,"ABOUT TO CRASH");
     const char* body_str = bdata(req->body);
-    json_body = json_tokener_parse(body_str);
-    if(json_body == NULL || json_object_is_type(json_body,json_type_object)){
-        json_object_put(json_body);
+    json_body = json_string(body_str);
+    if(json_body == NULL || !json_is_object(json_body)){
+        json_decref(json_body);
         bdestroy(header);
         return 0;
     }
 
-    if(json_object_is_type(json_body,json_type_object)){
-        fprintf(stdout, "This is an object");
-    } else {
-        fprintf(stdout, "This is NOT an object!");
+    method_obj = json_object_get(json_body,"type");
+    if(method_obj == NULL){
+        json_decref(json_body);
+        bdestroy(header);
+        return 0;
     }
 
-    method_obj = json_object_object_get(json_body,"type");
-    method_str = json_object_get_string(method_obj);
+    method_str = json_string_value(method_obj);
     bstring method_bstr = bfromcstr(method_str);
-    json_object_put(method_obj);
-    json_object_put(json_body);
+    json_decref(method_obj);
+    json_decref(json_body);
     
     if(method_obj == NULL || bstrcmp(method_bstr,&DISCONNECT) != 0){
         bdestroy(method_bstr);
-        json_object_put(method_obj);
-        json_object_put(json_body);
+        json_decref(method_obj);
+        json_decref(json_body);
         bdestroy(header);
         return 0;
     }
     bdestroy(method_bstr);
 
-    json_object_put(method_obj);
-    json_object_put(json_body);
+    json_decref(method_obj);
+    json_decref(json_body);
     bdestroy(header);
     return 1;
 }
@@ -401,10 +399,10 @@ int mongrel2_disconnect(mongrel2_socket *pub_socket, mongrel2_request *req){
  * @return
  */
 bstring mongrel2_request_get_header(mongrel2_request *req, char* key){
-    json_object *val_json = json_object_object_get(req->headers,key);
-    const char* val_str = json_object_get_string(val_json);
+    json_t *header_val_obj = json_object_get(req->headers,key);
+    const char* val_str = json_string_value(header_val_obj);
     bstring retval = bfromcstr((char*)val_str);
-    json_object_put(val_json);
+    json_decref(header_val_obj);
 
     return retval;
 }
@@ -416,7 +414,7 @@ int mongrel2_request_finalize(mongrel2_request *req){
     bdestroy(req->path);
     bdestroy(req->uuid);
     bdestroy(req->conn_id_bstr);
-    json_object_put(req->headers);
+    json_decref(req->headers);
     free(req);
     return 0;
 }

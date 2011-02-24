@@ -4,7 +4,7 @@ LOCAL_MONGREL2_LIB=-L. -lm2handler
 
 CFLAGS=-g -std=c99 -Wall -Werror $(OPTCFLAGS)
 LFLAGS=-L/opt/local/lib $(OPTLFLAGS)
-LIBS=-lzmq -ljson
+LIBS=-lzmq -ljansson
 PREFIX?=/usr/local
 
 SOURCES=m2handler.c bstr/bstrlib.c bstrlib.c
@@ -57,9 +57,6 @@ install: lib
 	install -d --owner=root $(PREFIX)/include/bstr/
 	install --owner=root bstr/bstrlib.h $(PREFIX)/include/bstr/
 	install --owner=root bstr/bstraux.h $(PREFIX)/include/bstr/
-
-
-	# --mode=rw-r--r
 
 clean : 
 	rm -rf *.o m2handler libm2handler.a body_toupper_handler fifo_reader_handler handler_pipe
