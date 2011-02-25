@@ -48,7 +48,7 @@ ws_handshake.o : sample_handlers/ws_handshake.c
 	$(CC) $(CFLAGS) -I. -c sample_handlers/ws_handshake.c -o ws_handshake.o
 
 ws_handshake_handler : lib ws_handshake.o bstrlib.o bstraux.o m2handler.o m2websocket.o
-	$(CC) $(LFLAGS) $(LIBS) -I. bstrlib.o bstraux.o ws_handshake.o -o ws_handshake_hander $(LOCAL_MONGREL2_LIB)
+	$(CC) $(LFLAGS) $(LIBS) -I. bstrlib.o bstraux.o ws_handshake.o -o ws_handshake_handler $(LOCAL_MONGREL2_LIB)
 
 install: lib
 	install --owner=root libm2handler.a $(PREFIX)/lib
@@ -59,4 +59,4 @@ install: lib
 	install --owner=root bstr/bstraux.h $(PREFIX)/include/bstr/
 
 clean : 
-	rm -rf *.o m2handler libm2handler.a body_toupper_handler fifo_reader_handler handler_pipe
+	rm -rf *.o m2handler libm2handler.a body_toupper_handler fifo_reader_handler ws_handshake_handler
