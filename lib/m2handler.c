@@ -282,8 +282,7 @@ mongrel2_request *mongrel2_recv(mongrel2_socket *pull_socket){
 }
 
 /**
- * Removed the mongrel2_request as a param from here. That info is encoded in
- * the response buff. Bad idea?
+ * The most raw interface to the Mongrel2 webserver. Takes ownership of response.
  * @param pub_socket
  * @param response_buff
  */
@@ -321,7 +320,9 @@ int mongrel2_reply_http(mongrel2_socket *pub_socket, mongrel2_request *req, cons
     bconcat(payload, &SEPERATOR);
     bconcat(payload,body);
     // mongrel2_send(pub_socket,response);
-    return mongrel2_reply(pub_socket, req, payload);
+    int retval = mongrel2_reply(pub_socket, req, payload);
+    bdestroy(payload);
+    return retval;
 }
 /**
  * The big kahuna. Formats protocol message to mongrel2 and sends along your payload.

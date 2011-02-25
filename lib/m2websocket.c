@@ -73,11 +73,13 @@ void mongrel2_ws_debug(bstring data){
         fprintf(stderr, "debug could not allocate a conversion buffer");
         exit(EXIT_FAILURE);
     }
-    
-    bstring hex_dump = bfromcstr("");
-    bstring san_dump = bfromcstr("");
+
     bstring single_hex;
     bstring single_char;
+
+    bstring hex_dump = bfromcstr("");
+
+    bstring san_dump = bfromcstr("");
 
     char* raw_char;
     char* cstr = bdata(data);
@@ -97,6 +99,7 @@ void mongrel2_ws_debug(bstring data){
             buf[0] = *raw_char;
         }
         buf[1] = '\0';
+        
         single_char = bfromcstr(buf);
         bconcat(san_dump,single_char);
         bdestroy(single_char);
@@ -105,18 +108,22 @@ void mongrel2_ws_debug(bstring data){
     fprintf(stdout, "SANITIZED DATA\n%.*s\n",blength(san_dump), bdata(san_dump));
     fprintf(stdout, "DEBUGGER SEZ\n%.*s\n", blength(hex_dump), bdata(hex_dump));
     fprintf(stdout, "########################\n");
-
+    
+    bdestroy(san_dump);
+    bdestroy(hex_dump);
     free(buf);
+
+    return;
 }
 
 int mongrel2_ws_reply(mongrel2_socket *pub_socket, mongrel2_request *req, bstring data){
     bstring payload = bstrcpy(data);
 
-    // ! and # are teh fill characters. You should not see these if the data is correct
+    // ! and # are the fill characters. You should not see these if the data is correct
     bInsertChrs(payload, blength(payload), 1, TERM_CHAR, '!');
     bInsertChrs(payload, 0, 1, START_CHAR, '#');
     mongrel2_reply(pub_socket,req,payload);
-    mongrel2_ws_debug(payload);
+    // mongrel2_ws_debug(payload);
     bdestroy(payload);
     return 0;
 }

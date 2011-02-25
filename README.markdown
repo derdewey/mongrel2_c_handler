@@ -1,6 +1,5 @@
 # Mongrel2 C Handler: libm2handler
 
-
 A C library for handling requests from Mongrel2. Includes a suite of sample handlers to get you up and running.
 
 ### Prequisites ###

@@ -8,14 +8,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
-#include <pthread.h>
 
 #include "../m2handler.h"
 #include "../m2websocket.h"
 
 // Static function definitions
 static const struct tagbstring SENDER = bsStatic("82209006-86FF-4982-B5EA-D1E29E55D483");
-static void *conn_handler(void *nothing);
 
 // Shared variables
 static mongrel2_socket *pub_socket;
@@ -47,8 +45,7 @@ int main(int argc, char **args){
 
     mongrel2_request *request;
 
-    pthread_t conn_thread;
-    int pthread_retval;
+    // Polling is done to show how to do a clean shutdown
     int poll_response;
     zmq_pollitem_t socket_tracker;
     socket_tracker.socket = pull_socket->zmq_socket;
@@ -59,7 +56,11 @@ int main(int argc, char **args){
         if(poll_response > 0){
             request = mongrel2_recv(pull_socket);
             if(request != NULL && mongrel2_request_for_disconnect(request) != 1){
-                pthread_retval = pthread_create(&conn_thread, NULL, conn_handler, (void*)request);
+                mongrel2_ws_reply_upgrade(request,pub_socket);
+                bstring msg = bformat("{\"msg\" : \"hi there %d\"}", request->conn_id);
+                mongrel2_ws_reply(pub_socket,request,msg);
+                bdestroy(msg);
+                mongrel2_request_finalize(request);
             } else {
                 fprintf(stdout,"Connection %d disconnected\n", request->conn_id);
             }
@@ -77,16 +78,4 @@ int main(int argc, char **args){
     mongrel2_deinit(ctx);
     fprintf(stdout,"\nClean shutdown done! Thanks for playing!\n");
     return 0;
-}
-
-static void *conn_handler(void *arg){
-    mongrel2_request *req = (mongrel2_request*)arg;
-    fprintf(stdout,"\nTHREAD SPAWNED TO HANDLE %d\nSending handshake\n",req->conn_id);
-    mongrel2_ws_reply_upgrade(req,pub_socket);
-    bstring msg = bformat("{\"msg\" : \"hi there %d\"}", req->conn_id);
-    mongrel2_ws_reply(pub_socket,req,msg);
-    bdestroy(msg);
-
-    //mongrel2_disconnect(pub_socket,req);
-    pthread_exit(NULL);
 }
