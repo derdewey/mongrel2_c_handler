@@ -55,6 +55,7 @@ int main(int argc, char **args){
         poll_response = zmq_poll(&socket_tracker,1,500*1000);
         if(poll_response > 0){
             request = mongrel2_recv(pull_socket);
+            fprintf(stdout,"got something...");
             if(request != NULL && mongrel2_request_for_disconnect(request) != 1){
                 mongrel2_ws_reply_upgrade(request,pub_socket);
                 bstring msg = bformat("{\"msg\" : \"hi there %d\"}", request->conn_id);

@@ -246,6 +246,7 @@ mongrel2_request *mongrel2_parse_request(bstring raw_request_bstr){
   req->headers = json_loads(bdata(req->raw_headers),0,&header_err);// json_string(bdata(req->raw_headers));
   if(req->headers == NULL){
       fprintf(stderr,"Problem parsing the inputs near position: %d, line: %d, col: %d",header_err.position,header_err.line,header_err.position);
+      goto error;
   }
   if(json_typeof(req->headers) != JSON_OBJECT){
     fprintf(stderr, "Headers did not turn into an object... ruh roh!");

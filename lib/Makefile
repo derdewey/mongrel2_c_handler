@@ -50,6 +50,9 @@ ws_handshake.o : sample_handlers/ws_handshake.c
 ws_handshake_handler : lib ws_handshake.o bstrlib.o bstraux.o m2handler.o m2websocket.o
 	$(CC) $(LFLAGS) $(LIBS) -I. bstrlib.o bstraux.o ws_handshake.o -o ws_handshake_handler $(LOCAL_MONGREL2_LIB)
 
+scan-build:
+	scan-build make test
+
 install: lib
 	install --owner=root libm2handler.a $(PREFIX)/lib
 	install --owner=root m2handler.h $(PREFIX)/include

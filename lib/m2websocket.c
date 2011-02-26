@@ -68,21 +68,27 @@ bstring mongrel2_ws_upgrade_body(mongrel2_request *req){
 }
 
 void mongrel2_ws_debug(bstring data){
-    char* buf = calloc(4,sizeof(char));
-    if(buf == NULL){
-        fprintf(stderr, "debug could not allocate a conversion buffer");
-        exit(EXIT_FAILURE);
+    if(data == NULL){
+        fprintf(stderr, "cannot debug null data");
+        return;
     }
-
-    bstring single_hex;
-    bstring single_char;
+    bstring single_hex = NULL;
+    bstring single_char = NULL;
 
     bstring hex_dump = bfromcstr("");
-
     bstring san_dump = bfromcstr("");
+    char* buf = calloc(4,sizeof(char));
+    if(buf == NULL || data == NULL){
+        fprintf(stderr, "debug could not allocate a conversion buffer");
+        goto exit;
+    }
 
     char* raw_char;
     char* cstr = bdata(data);
+    if(cstr == NULL){
+        goto exit;
+        return;
+    }
 
     for(int i=0; i<blength(data); i++){
         snprintf(buf,4,"%02X ",cstr[i]);
@@ -108,7 +114,8 @@ void mongrel2_ws_debug(bstring data){
     fprintf(stdout, "SANITIZED DATA\n%.*s\n",blength(san_dump), bdata(san_dump));
     fprintf(stdout, "DEBUGGER SEZ\n%.*s\n", blength(hex_dump), bdata(hex_dump));
     fprintf(stdout, "########################\n");
-    
+
+    exit:
     bdestroy(san_dump);
     bdestroy(hex_dump);
     free(buf);
@@ -176,6 +183,10 @@ static int mongrel2_ws_calculate_response(uint32_t seckey1, uint32_t seckey2, bs
     char* seckey1_bytes = (char*)&seckey1;
     char* seckey2_bytes = (char*)&seckey2;
     char* body_str = bdata(body);
+    if(body_str == NULL){
+        fprintf(stderr, "mongrel2_ws_calculate_reponse got an empty body...");
+        return -1;
+    }
 
     // TODO this assumes little endian arch. Do a runtime check in the future to make it cross platform.
     md5input[0] = seckey1_bytes[3];
