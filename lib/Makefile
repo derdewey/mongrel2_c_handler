@@ -54,12 +54,14 @@ scan-build:
 	scan-build make test
 
 install: lib
-	install --owner=root libm2handler.a $(PREFIX)/lib
-	install --owner=root m2handler.h $(PREFIX)/include
-	install --owner=root m2websocket.h $(PREFIX)/include
-	install -d --owner=root $(PREFIX)/include/bstr/
-	install --owner=root bstr/bstrlib.h $(PREFIX)/include/bstr/
-	install --owner=root bstr/bstraux.h $(PREFIX)/include/bstr/
+	install -d -o root $(PREFIX)/lib/
+	install -o root libm2handler.a $(PREFIX)/lib/
+	install -d -o root $(PREFIX)/include/
+	install -o root m2handler.h $(PREFIX)/include/
+	install -o root m2websocket.h $(PREFIX)/include/
+	install -d -o root $(PREFIX)/include/bstr/
+	install -o root bstr/bstrlib.h $(PREFIX)/include/bstr/
+	install -o root bstr/bstraux.h $(PREFIX)/include/bstr/
 
 clean : 
 	rm -rf *.o m2handler libm2handler.a body_toupper_handler fifo_reader_handler ws_handshake_handler
