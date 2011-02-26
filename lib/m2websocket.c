@@ -11,8 +11,8 @@
 #include "m2websocket.h"
 #include "md5/md5.h"
 
-#define START_CHAR 0x00
-#define TERM_CHAR 0xFF
+#define START_CHAR (unsigned char)0x00
+#define TERM_CHAR (unsigned char)0xFF
 
 static uint32_t mongrel2_ws_concat_numbers(const char *incoming);
 static uint32_t mongrel2_ws_count_spaces(const char *incoming);
@@ -81,8 +81,8 @@ void mongrel2_ws_debug(bstring data){
 
     bstring san_dump = bfromcstr("");
 
-    char* raw_char;
-    char* cstr = bdata(data);
+    unsigned char* raw_char;
+    unsigned char* cstr = (unsigned char*)bdata(data);
 
     for(int i=0; i<blength(data); i++){
         snprintf(buf,4,"%02X ",cstr[i]);
