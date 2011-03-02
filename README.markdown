@@ -28,18 +28,23 @@ END QUOTE
 
 From inside of lib run 'make test' to build all the handlers.
 
+Test the WebSocket support
+(1) cd deployment && ./config.sh && ./start.sh
+(2) cd handler && make test && ./ws_handshake_handler
+(2) Open http://localhost:6767/ in Chrome (testing on 9.whatever and 10.whatever), browse to sample.
+
 Testing body_toupper_handler
 I use three terminal sessions:
 (1) cd deployment && ./config.sh && ./start.sh # Mongrel2 is up
 (2) cd handler && make test && ./body_toupper_handler
-(3) curl -x "some post data" http://localhost:6767/
+(3) curl localhost:6767/body_to_upper_handler -d "hello handler" -v
 # The curl session should spit back the data but capitalized.
 
 Testing fifo_reader_handler
 Now we'll use four sessions
 (1) As before
 (2) cd handler && make test && ./fifo_reader_handler
-(3) curl http://localhost:6767/
+(3) curl http://localhost:6767/fifo_reader_handler
 (4) cd handler && cat Makefile > handler_pipe
 You will see the Makefile in the curl session.
 

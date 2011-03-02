@@ -6,7 +6,7 @@
  * Loops on read, does not close initial request, just ctrl-c it to stop.
  *
  *
- * curl localhost:6767 -d "hello handler" -v
+ * curl localhost:6767/fifo_reader_handler -d "hello handler" -v
  *
  *
  */

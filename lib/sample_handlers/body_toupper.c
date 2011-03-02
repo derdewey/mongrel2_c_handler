@@ -4,10 +4,10 @@
  * Then test it out using curl
  *
  * Send a file from your current directory
- * curl localhost:6767 -d @mongrel_handler.c -v
+ * curl localhost:6767/body_to_upper_handler -d @m2handler.c -v
  *
  * Send a string from the command line
- * curl localhost:6767 -d "hello handler" -v
+ * curl localhost:6767/body_to_upper_handler -d "hello handler" -v
  * 
  *
  */
